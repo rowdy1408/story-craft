@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}My Library{% endblock %}
+
+{% block styles %}
+    <style>
+        /* --- CUSTOM VINTAGE ACCORDION --- */
+        .accordion-item {
+            background-color: #fff;
+            border: none;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 10px rgba(93, 64, 55, 0.05);
+            overflow: hidden;
+            border: 1px solid #efebe9;
+        }
+        
+        .accordion-button {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-ink);
+            background-color: #fff;
+            padding: 20px 25px;
+            transition: all 0.3s ease;
+        }
+        
+        .accordion-button:not(.collapsed) {
+            background-color: #fff8e1;
+            color: #d35400;
+            box-shadow: inset 0 -1px 0 rgba(0,0,0,0.05);
+        }
+        .accordion-button:focus { box-shadow: none; border-color: rgba(0,0,0,0.1); }
+        .accordion-button::after { filter: grayscale(100%) opacity(0.5); }
+
+        .accordion-body {
+            background-color: #fdfbf7;
+            padding: 25px;
+        }
+
+        /* --- ACTION TOOLBAR --- */
+        .action-toolbar {
+            background: #fff;
+            border-radius: 12px;
+            padding: 10px 15px;
+            border: 1px dashed #d7ccc8;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        /* --- VINTAGE BUTTONS --- */
+        .btn-v {
+            border-radius: 8px; font-weight: 600; font-size: 0.9rem; padding: 8px 16px;
+            border: none; display: inline-flex; align-items: center; gap: 6px;
+            transition: transform 0.1s;
+        }
+        .btn-v:active { transform: scale(0.96); }
+        .btn-v-secondary { background-color: #eceff1; color: #455a64; }
+        .btn-v-secondary:hover { background-color: #cfd8dc; color: #263238; }
+        .btn-v-comic { background-color: #d35400; color: white; box-shadow: 0 3px 0 #a04000; margin-bottom: 3px; }
+        .btn-v-comic:hover { background-color: #e67e22; color: white; margin-top: 1px; margin-bottom: 2px; box-shadow: 0 2px 0 #a04000; }
+        .btn-v-view { background-color: #00897b; color: white; }
+        .btn-v-view:hover { background-color: #00796b; color: white; }
+        .btn-v-delete { background-color: #ffab91; color: #bf360c; }
+        .btn-v-delete:hover { background-color: #ff8a65; color: #bf360c; }
+
+        .quiz-creator-box {
+            background-color: #e0f2f1; border: 1px dashed #00897b;
+            border-radius: 8px; padding: 5px 10px; margin-left: auto;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .quiz-select { border: 1px solid #b2dfdb; background: white; border-radius: 6px; font-size: 0.9rem; padding: 4px 8px; color: #00695c; }
+        .btn-v-quiz { background-color: #26a69a; color: white; border-radius: 6px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; padding: 0; }
+
+        /* --- READER VIEW (ĐÃ SỬA LỖI DÍNH CHỮ TẠI ĐÂY) --- */
+        .story-reader-view {
+            font-family: 'Georgia', serif;
+            font-size: 1.15rem; 
+            line-height: 1.8; 
+            color: #2c3e50;
+            border-left: 4px solid #d35400;
+            padding-left: 25px;
+            
+            /* QUAN TRỌNG: Giữ nguyên định dạng xuống dòng */
+            white-space: pre-wrap; 
+            
+            /* Ngắt từ nếu từ quá dài để tránh tràn màn hình */
+            word-wrap: break-word; 
+        }
+        
+        .badge-quiz { 
+            background-color: #27ae60; color: white; font-size: 0.7em; padding: 5px 10px; 
+            border-radius: 20px; margin-left: 10px; font-family: 'Quicksand'; letter-spacing: 0.5px;
+        }
+
+        @media (max-width: 992px) {
+            .quiz-creator-box { margin-left: 0; width: 100%; justify-content: space-between; margin-top: 10px; }
+            .action-toolbar { flex-direction: column; align-items: flex-start; }
+            .btn-v { width: 100%; justify-content: center; }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="content-card">
+        <div class="d-flex align-items-center gap-3 mb-4">
+            <h1 class="mb-0">My Library</h1>
+            <span class="badge rounded-pill" style="background-color: #d35400; font-size: 1rem;">{{ stories|length }} Stories</span>
+        </div>
+        <p class="lead mb-5">A collection of your crafted tales.</p>
+
+        {% if stories %}
+            <div class="accordion accordion-flush" id="storiesAccordion">
+                {% for story in stories %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading-{{ story.id }}">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ story.id }}">
+                                <span>{{ story.title }}</span>
+                                {% if 'Extra Quiz' in story.content or 'Reading Quiz' in story.content %}
+                                    <span class="badge-quiz"><i class="bi bi-check-circle-fill"></i> Quiz Inside</span>
+                                {% endif %}
+                            </button>
+                        </h2>
+                        <div id="collapse-{{ story.id }}" class="accordion-collapse collapse" data-bs-parent="#storiesAccordion">
+                            <div class="accordion-body">
+                                
+                                <div class="action-toolbar">
+                                    <a href="{{ url_for('edit_story_page', story_id=story.id) }}" class="btn btn-v btn-v-secondary" title="Edit Text"><i class="bi bi-pencil"></i> Edit</a>
+                                    <button type="button" class="btn btn-v btn-v-secondary" onclick="copyStoryContent('{{ story.id }}', this)" title="Copy to Clipboard"><i class="bi bi-clipboard"></i> Copy</button>
+                                    
+                                    {% if '--- PAGE' in story.content %}
+                                        <button type="button" class="btn btn-v btn-v-comic" onclick="createComic('{{ story.id }}', this)">
+                                            <i class="bi bi-palette-fill"></i> Create Comic
+                                        </button>
+                                    {% endif %}
+                                    
+                                    {% if story.comics %}
+                                        <a href="{{ url_for('view_comic', comic_id=story.comics[-1].id) }}" class="btn btn-v btn-v-view"><i class="bi bi-eye-fill"></i> View Comic PDF</a>
+                                    {% endif %}
+
+                                    <form action="{{ url_for('add_quiz_to_saved') }}" method="POST" class="quiz-creator-box mb-0">
+                                        <input type="hidden" name="story_id" value="{{ story.id }}">
+                                        <span style="font-weight: 600; color: #00695c; font-size: 0.9rem;"><i class="bi bi-puzzle-fill"></i> Add Quiz:</span>
+                                        <select name="quiz_type" class="quiz-select" required>
+                                            <option value="" disabled selected>Type...</option>
+                                            <option value="mcq">Multiple Choice</option>
+                                            <option value="tf">True/False</option>
+                                            <option value="open">Open Ended</option>
+                                            <option value="mix">Mix</option>
+                                        </select>
+                                        <button type="submit" class="btn btn-v btn-v-quiz" title="Generate Quiz"><i class="bi bi-magic"></i></button>
+                                    </form>
+
+                                    <form action="{{ url_for('handle_delete_story') }}" method="POST" onsubmit="return confirm('Delete this story permanently?');" class="mb-0 ms-auto-lg">
+                                        <input type="hidden" name="story_id" value="{{ story.id }}">
+                                        <button type="submit" class="btn btn-v btn-v-delete" title="Delete Story"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </div>
+                                
+                                <div class="story-reader-view" id="story-content-{{ story.id }}">{{ story.content }}</div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5" style="border: 2px dashed #d7ccc8; border-radius: 16px; color: #8d6e63;">
+                <i class="bi bi-journal-bookmark" style="font-size: 3rem;"></i>
+                <p class="mt-3 fs-5">Your library is empty.</p>
+                <a href="{{ url_for('index') }}" class="btn btn-v btn-v-comic">Start Writing</a>
+            </div>
+        {% endif %}
+    </div> 
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        async function copyStoryContent(storyId, buttonElement) {
+            const contentElement = document.getElementById(`story-content-${storyId}`);
+            if (!contentElement) { console.error('Could not find content for ID:', storyId); return; }
+            const textToCopy = contentElement.innerText;
+            try {
+                await navigator.clipboard.writeText(textToCopy);
+                const originalHTML = buttonElement.innerHTML;
+                buttonElement.innerHTML = '<i class="bi bi-check2"></i> Copied';
+                setTimeout(() => { buttonElement.innerHTML = originalHTML; }, 2000);
+            } catch (err) { console.error('Failed to copy: ', err); alert('Failed to copy.'); }
+        }
+
+        async function createComic(storyId, btn) {
+            if(!confirm("Create a Picture Book Comic?")) return;
+            
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Designing...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`/create-comic/${storyId}`, { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.href = data.redirect_url;
+                } else {
+                    alert("Error: " + (data.error || "Unknown error"));
+                    btn.innerHTML = originalHTML;
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                alert("Network error: " + e);
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
+        }
+    </script>
+{% endblock %}

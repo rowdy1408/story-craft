@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Style Bank Management{% endblock %}
+
+{% block content %}
+    <div class="content-card">
+        <h1>Style Bank Management</h1>
+        <p class="lead mb-4">Add, update, or delete your custom writing style samples.</p>
+
+        <div class="row g-5 mt-3">
+            <div class="col-md-7">
+                <h2>Add / Update Style</h2>
+                <form action="{{ url_for('add_style') }}" method="POST" class="mt-4">
+                    <div class="mb-3">
+                        <label for="style_name" class="form-label">Style Name:</label>
+                        <input type="text" id="style_name" name="style_name" class="form-control" placeholder="e.g., 'Hemingway'" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="style_content" class="form-label">Paste sample text here:</label>
+                        <textarea id="style_content" name="style_content" class="form-control" rows="12" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Save Style</button>
+                </form>
+            </div>
+            <div class="col-md-5">
+                <h2>Delete Style</h2>
+                <form action="{{ url_for('delete_style') }}" method="POST" class="mt-4">
+                    <p>Currently saved styles: <b>{{ styles | length }}</b></p>
+                    <div class="mb-3">
+                        <label for="style_to_delete" class="form-label">Select style to delete:</label>
+                        <select name="style_to_delete" id="style_to_delete" class="form-select">
+                            <option value="">-- Choose a style --</option>
+                            {% for style in styles %}
+                                <option value="{{ style.name }}">{{ style.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-danger w-100">Delete Selected Style</button>
+                </form>
+            </div>
+        </div>
+    </div> {% endblock %}

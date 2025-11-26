@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}Create Story - Story Generator{% endblock %}
+
+{% block styles %}
+    <style>
+        #loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(93, 64, 55, 0.85); /* Màu nâu overlay */
+            color: #fff;
+            display: none; justify-content: center; align-items: center;
+            z-index: 9999; flex-direction: column;
+        }
+        .spinner-border { width: 4rem; height: 4rem; color: #f1c40f; }
+        
+        /* CUSTOM CARD LAYOUT */
+        .input-section {
+            background: #fff;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+        }
+        .section-header {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+            border-bottom: 2px solid #fdf6e3; padding-bottom: 10px;
+        }
+        .section-icon {
+            font-size: 1.5rem; color: var(--primary-btn);
+        }
+        
+        /* Style checkbox list */
+        .style-checkbox-group {
+             border: 2px dashed #e0e0e0; border-radius: 12px; padding: 15px;
+             height: 150px; overflow-y: auto; background-color: #fafafa;
+        }
+        .form-check-input:checked {
+            background-color: var(--primary-btn);
+            border-color: var(--primary-btn);
+        }
+
+        /* Confirm Table */
+        .confirm-table td:first-child { font-family: 'Playfair Display', serif; color: var(--primary-btn); width: 35%; }
+        .modal-header { background-color: var(--sidebar-wood); color: #fff; }
+        .modal-content { border-radius: 16px; overflow: hidden; border: none; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div id="loading-overlay">
+        <div class="spinner-border" role="status"></div>
+        <h3 class="mt-4" style="font-family: 'Playfair Display';">Weaving your story...</h3>
+        <p>Please wait while the ink dries.</p>
+    </div>
+
+    <div style="max-width: 900px; margin: 0 auto;">
+        <div class="text-center mb-5">
+            <h1>The Storyteller's Desk</h1>
+            <p class="lead">Craft tailored reading materials for your students.</p>
+        </div>
+
+        <form id="story-form" action="{{ url_for('handle_generation') }}">
+            
+            <div class="input-section">
+                <div class="section-header">
+                    <i class="bi bi-stars section-icon"></i>
+                    <h2 class="mb-0 border-0 p-0">The Core</h2>
+                </div>
+                
+                <div class="row g-4">
+                    <div class="col-12">
+                        <label for="idea" class="form-label">1. Story Idea / Plot:</label>
+                        <textarea id="idea" name="idea" class="form-control" rows="3" placeholder="e.g., A boy gets lost in a storm and finds courage..." required>{{ previous_inputs.idea }}</textarea>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="target_audience" class="form-label">2. Target Audience:</label>
+                        <select id="target_audience" name="target_audience" class="form-select">
+                            <option value="Children" selected>👶 Children (Storybook Mode)</option>
+                            <option value="Teenagers">🎒 Teenagers (High School)</option>
+                            <option value="Adults (General)">🏠 Adults - General Life</option>
+                            <option value="Adults (Office/Business)">💼 Adults - Business/Office</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="main_char" class="form-label">3. Main Character:</label>
+                        <input type="text" id="main_char" name="main_char" class="form-control" placeholder="e.g., 'Lan, 8yo girl'" value="{{ previous_inputs.main_char }}" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-section">
+                <div class="section-header">
+                    <i class="bi bi-sliders section-icon"></i>
+                    <h2 class="mb-0 border-0 p-0">Details & Level</h2>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <label for="cefr_level" class="form-label">4. CEFR Level:</label>
+                        <select id="cefr_level" name="cefr_level" class="form-select">
+                            <option value="Pre A1">Pre A1 (Beginner)</option>
+                            <option value="A1">A1 (Elementary)</option>
+                            <option value="A2">A2 (Pre-Intermediate)</option>
+                            <option value="B1" selected>B1 (Intermediate)</option>
+                            <option value="B2">B2 (Upper Intermediate)</option>
+                            <option value="C1">C1 (Advanced)</option>
+                            <option value="C2">C2 (Proficiency)</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="word_count" class="form-label">5. Word Count:</label>
+                        <input type="number" id="word_count" name="word_count" class="form-control" value="250" min="50" required>
+                    </div>
+
+                    <div class="col-12">
+                        <label for="vocab_str" class="form-label">6. Required Vocabulary:</label>
+                        <input type="text" id="vocab_str" name="vocab_str" class="form-control" placeholder="run, storm, scared, brave..." value="{{ previous_inputs.vocab_str }}" required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="theme" class="form-label">7. Theme:</label>
+                        <input type="text" id="theme" name="theme" class="form-control" placeholder="e.g., friendship, courage..." required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="setting" class="form-label">8. Setting:</label>
+                        <input type="text" id="setting" name="setting" class="form-control" placeholder="Hanoi Old Quarter...">
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-section">
+                <div class="section-header">
+                    <i class="bi bi-magic section-icon"></i>
+                    <h2 class="mb-0 border-0 p-0">Magic Dust (Optional)</h2>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <label for="num_support_char" class="form-label">9. Supporting Characters (Qty):</label>
+                        <input type="number" id="num_support_char" name="num_support_char" class="form-control" placeholder="e.g., 2" min="0" max="5">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="quiz_type" class="form-label">10. Generate Quiz:</label>
+                        <select id="quiz_type" name="quiz_type" class="form-select">
+                            <option value="none">No Quiz</option>
+                            <option value="mcq">Multiple Choice</option>
+                            <option value="tf">True/False</option>
+                            <option value="open">Open Questions</option>
+                            <option value="mix">Mix</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="negative_keywords" class="form-label">11. Words to Avoid:</label>
+                        <input type="text" id="negative_keywords" name="negative_keywords" class="form-control" placeholder="e.g., ghost, kill...">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">12. Writing Style:</label>
+                        <div class="style-checkbox-group">
+                            {% for style in all_styles %}
+                            <div class="form-check mb-1">
+                                <input class="form-check-input" type="checkbox" name="selected_styles" value="{{ style.name }}" id="style-{{ style.id }}">
+                                <label class="form-check-label" for="style-{{ style.id }}">{{ style.name }}</label>
+                            </div>
+                            {% endfor %}
+                            {% if not all_styles %} <small class="text-muted">No custom styles yet.</small> {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mb-5">
+                <button type="submit" class="btn btn-primary btn-lg px-5 py-3 fs-5">
+                    <i class="bi bi-pen-fill me-2"></i> Write My Story
+                </button>
+            </div>
+        </form>
+
+        <div id="story-result-container" class="mt-5"></div>
+    </div> 
+
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" style="font-family: 'Playfair Display';"><i class="bi bi-check2-circle"></i> Confirm Story Details</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="lead fs-6">Please review your creative brief:</p>
+                    <div class="table-responsive">
+                        <table class="table table-bordered confirm-table">
+                            <tbody>
+                                <tr><td>🎯 Audience:</td><td id="conf-audience" class="fw-bold" style="color: var(--primary-btn)"></td></tr>
+                                <tr><td>📝 Idea:</td><td id="conf-idea"></td></tr>
+                                <tr><td>🎭 Theme:</td><td id="conf-theme"></td></tr>
+                                <tr><td>👤 Main Character:</td><td><span id="conf-char"></span></td></tr>
+                                <tr><td>👥 Support Qty:</td><td id="conf-support"></td></tr>
+                                <tr><td>📍 Setting:</td><td id="conf-setting"></td></tr>
+                                <tr><td>📚 Vocabulary:</td><td id="conf-vocab"></td></tr>
+                                <tr><td>📊 Level:</td><td><span id="conf-level" class="badge bg-secondary"></span> - <span id="conf-count"></span> words</td></tr>
+                                <tr><td>❓ Quiz:</td><td id="conf-quiz"></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Edit</button>
+                    <button type="button" class="btn btn-primary" id="btn-real-submit">Generate Story</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        const storyForm = document.getElementById('story-form');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const resultContainer = document.getElementById('story-result-container');
+        const confirmModalEl = document.getElementById('confirmModal');
+        const confirmModal = new bootstrap.Modal(confirmModalEl);
+        const btnRealSubmit = document.getElementById('btn-real-submit');
+
+        function showLoading() { loadingOverlay.style.display = 'flex'; }
+        function hideLoading() { loadingOverlay.style.display = 'none'; }
+
+        storyForm.addEventListener('submit', function(event) {
+            event.preventDefault(); 
+            const fd = new FormData(storyForm);
+            
+            document.getElementById('conf-audience').textContent = fd.get('target_audience');
+            document.getElementById('conf-idea').textContent = fd.get('idea');
+            document.getElementById('conf-theme').textContent = fd.get('theme');
+            document.getElementById('conf-vocab').textContent = fd.get('vocab_str');
+            document.getElementById('conf-level').textContent = fd.get('cefr_level');
+            document.getElementById('conf-count').textContent = fd.get('word_count');
+            
+            const charVal = fd.get('main_char');
+            document.getElementById('conf-char').textContent = charVal.trim() ? charVal : "(Auto)";
+            
+            const supportVal = fd.get('num_support_char');
+            document.getElementById('conf-support').textContent = supportVal.trim() ? supportVal : "(Auto)";
+
+            const settingVal = fd.get('setting');
+            document.getElementById('conf-setting').textContent = settingVal.trim() ? settingVal : "(Auto)";
+
+            const quizVal = fd.get('quiz_type');
+            document.getElementById('conf-quiz').textContent = (quizVal === 'none') ? "No Quiz" : quizVal.toUpperCase();
+            
+            confirmModal.show();
+        });
+
+        btnRealSubmit.addEventListener('click', async function() {
+            confirmModal.hide(); 
+            showLoading(); 
+            resultContainer.innerHTML = '';
+
+            try {
+                const formData = new FormData(storyForm);
+                const response = await fetch("{{ url_for('handle_generation') }}", { 
+                    method: 'POST', body: formData
+                }); 
+                const resultData = await response.json(); 
+                let resultHTML = '';
+                const storyContent = resultData.story_result;
+
+                if (storyContent && storyContent.startsWith('ERROR:')) {
+                    resultHTML = `<div class="alert alert-danger"><h3>Error</h3><pre>${storyContent}</pre></div>`;
+                } else if (storyContent) {
+                    resultHTML = `
+                        <div class="input-section" style="border-top: 4px solid #27ae60;">
+                            <div class="section-header">
+                                <i class="bi bi-check-circle-fill section-icon" style="color: #27ae60;"></i>
+                                <h2 class="mb-0 border-0 p-0" style="color: #27ae60;">Story Ready!</h2>
+                            </div>
+                            <div style="font-family: 'Georgia'; font-size: 1.1rem; white-space: pre-wrap;">${storyContent}</div>
+                            <hr>
+                            <form action="{{ url_for('handle_save_story') }}" method="POST" class="text-end">
+                                <input type="hidden" name="story_content" value="${escapeHTML(storyContent)}">
+                                <button type="submit" class="btn btn-success btn-lg">💾 Save to Library</button>
+                            </form>
+                        </div>`;
+                } else {
+                    resultHTML = `<div class="alert alert-warning">No content returned.</div>`;
+                }
+                hideLoading(); 
+                resultContainer.innerHTML = resultHTML;
+            } catch (error) {
+                hideLoading(); 
+                resultContainer.innerHTML = `<div class="alert alert-danger">Connection Error: ${error}</div>`;
+            }
+        });
+
+        function escapeHTML(str) { 
+            if (!str) return "";
+            return str.replace(/[&<>"']/g, function(m) { 
+                return {'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#039;'}[m]; 
+            }); 
+        }
+    </script>
+{% endblock %}

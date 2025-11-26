@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Graded Translation - Vietnamese Folktales{% endblock %}
+
+{% block styles %}
+    <style>
+        /* CSS riêng cho loading overlay */
+        #loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7); color: white;
+            display: none; justify-content: center; align-items: center;
+            z-index: 9999; flex-direction: column;
+        }
+        .spinner-border { 
+    width: 4rem; height: 4rem; 
+    color: #f1c40f; /* Đổi thành màu vàng gold cho nổi bật trên nền nâu */
+}
+#loading-overlay h3 { 
+    font-family: 'Playfair Display', serif; /* Thêm font đẹp cho chữ loading */
+    color: #fdf6e3; /* Màu chữ kem sáng */
+}
+        #story-result-container pre { /* Giữ lại style kết quả AJAX */
+            white-space: pre-wrap; word-wrap: break-word;
+            font-family: inherit; font-size: 1.1rem; color: #000;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div id="loading-overlay">
+        <div class="spinner-border text-light" role="status"><span class="visually-hidden">Loading...</span></div>
+        <h3>Translating...</h3>
+    </div>
+
+    <div class="content-card">
+        <h1>🇻🇳 Graded Folktale Translator</h1>
+        <p class="lead mb-4">Select a Vietnamese folktale and the desired CEFR level. The AI will retell the story in English, adjusted to the specific reading grade.</p>
+
+        <form id="translation-form" action="{{ url_for('handle_translation') }}" method="POST">
+            <div class="row g-5">
+                <div class="col-md-6">
+                    <h2>Story & Level</h2>
+                    <div class="mb-3">
+                        <label for="folktale_name" class="form-label">1. Folktale (Vietnamese name):</label>
+                        <input type="text" id="folktale_name" name="folktale_name" class="form-control" placeholder="e.g., Tấm Cám, Sơn Tinh Thủy Tinh..." required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="cefr_level" class="form-label">2. Target CEFR Level:</label>
+                        <select id="cefr_level" name="cefr_level" class="form-select">
+                            <option value="Pre A1">Pre A1</option> <option value="A1">A1</option> <option value="A2">A2</option>
+                            <option value="B1" selected>B1</option> <option value="B2">B2</option> <option value="C1">C1</option> <option value="C2">C2</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="word_count" class="form-label">3. Desired Word Count:</label>
+                        <input type="number" id="word_count" name="word_count" class="form-control" value="500" min="100" required>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <h2>Context & Details</h2>
+                    <p class="text-muted small">(Optional details to guide the AI.)</p>
+                    
+                    <div class="mb-3">
+                        <label for="target_audience" class="form-label">4. Target Audience (Optional):</label> <input type="text" id="target_audience" name="target_audience" class="form-control" placeholder="e.g., Young learners (9-12)">
+                    </div>
+
+                     <div class="mb-3">
+                        <label for="output_type" class="form-label">5. Output Type:</label> <select id="output_type" name="output_type" class="form-select">
+                            <option value="story">Full Story with Definitions</option>
+                            <option value="summary">Short Summary Only</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="quiz_type" class="form-label">6. Add Quiz?</label>
+                         <select id="quiz_type" name="quiz_type" class="form-select">
+                            <option value="none">No Quiz</option>
+                            <option value="mcq">Multiple Choice (5 Qs)</option>
+                            <option value="tf">True/False (5 Qs)</option>
+                            <option value="open">Open-ended Questions (3 Qs)</option>
+                            <option value="mix">Mix (MCQ + Open-ended)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-4">
+
+            <div class="text-center mt-4">
+                <button type="submit" class="btn btn-primary btn-lg w-100">🇻🇳 Retell & Grade Story</button>
+            </div>
+        </form>
+
+        <div id="story-result-container" class="mt-5"></div>
+
+    </div> 
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        const translationForm = document.getElementById('translation-form');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const resultContainer = document.getElementById('story-result-container');
+
+        function showLoading() { loadingOverlay.style.display = 'flex'; }
+        function hideLoading() { loadingOverlay.style.display = 'none'; }
+
+        translationForm.addEventListener('submit', async function(event) {
+            event.preventDefault(); showLoading(); resultContainer.innerHTML = '';
+            try {
+                const formData = new FormData(translationForm);
+                const response = await fetch("{{ url_for('handle_translation') }}", { method: 'POST', body: formData });
+                const data = await response.json(); let resultHTML = '';
+                const storyContent = data.story_result;
+                if (storyContent.startsWith('ERROR:')) {
+                    resultHTML = `<div class="alert alert-danger"><h2 class="alert-heading">An Error Occurred</h2><pre>${storyContent}</pre></div>`;
+                } else {
+                    resultHTML = `<hr class="my-4"><div class="alert alert-success"><h2 class="alert-heading">Graded Translation Ready!</h2><pre>${storyContent}</pre></div><form action="{{ url_for('handle_save_story') }}" method="POST" class="mt-3"><input type="hidden" name="story_content" value="${escapeHTML(storyContent)}"><button type="submit" class="btn btn-success btn-lg">💾 Save this Story</button></form>`;
+                }
+                hideLoading(); resultContainer.innerHTML = resultHTML;
+            } catch (error) {
+                hideLoading(); resultContainer.innerHTML = `<div class="alert alert-danger"><h2 class="alert-heading">Network Error</h2><pre>Could not connect to the server. ${error}</pre></div>`;
+            }
+        });
+        function escapeHTML(str) { return str.replace(/[&<>"']/g, function(m) { return {'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#039;'}[m]; }); }
+    </script>
+{% endblock %}

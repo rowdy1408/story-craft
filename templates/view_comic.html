@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block title %}Comic Studio: {{ title }}{% endblock %}
+
+{% block styles %}
+<style>
+    /* --- WEB MODE (GIỮ NGUYÊN) --- */
+    body { background-color: #f8f9fa; }
+    .studio-container { max-width: 1200px; margin: 30px auto; }
+    .master-prompt-box { background: #e3f2fd; border: 1px solid #90caf9; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+    .panel-row { background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 30px; overflow: hidden; display: flex; flex-wrap: wrap; }
+    .panel-info { flex: 1; padding: 30px; min-width: 350px; border-right: 1px solid #eee; }
+    .prompt-box { background: #f1f3f5; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 0.9rem; color: #444; margin-bottom: 15px; border: 1px dashed #ced4da; cursor: pointer; word-break: break-word; }
+    .caption-text { font-family: 'Georgia', serif; font-size: 1.2rem; color: #0d3b66; font-style: italic; margin-top: 10px; }
+    .panel-preview { flex: 1; min-width: 350px; background-color: #212529; position: relative; min-height: 400px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+    .comic-image { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .url-input-overlay { width: 80%; text-align: center; }
+    .d-none { display: none !important; }
+    .d-block { display: block !important; }
+    .print-cover-page, .print-back-cover { display: none; }
+
+    /* --- PRINT MODE (FIXED RATIO & SAFE SCALE) --- */
+    @media print {
+        /* 1. THIẾT LẬP KHỔ GIẤY VÀ XÓA LỀ MẶC ĐỊNH */
+        @page { 
+            size: A4 landscape; 
+            margin: 0 !important; /* Bắt buộc: Xóa lề trắng của trình duyệt */
+        }
+
+        /* 2. CẤU HÌNH BODY ĐỂ IN NHIỀU TRANG */
+        html, body {
+            width: 297mm; /* Cố định chiều rộng A4 ngang */
+            height: auto !important; /* QUAN TRỌNG: Để chiều cao tự động giãn ra các trang sau */
+            margin: 0 !important; 
+            padding: 0 !important; 
+            background-color: white !important;
+            overflow: visible !important; /* Cho phép nội dung tràn xuống trang dưới */
+            display: block !important; /* Đảm bảo flow dòng chảy thông thường, không dùng flex ở body */
+        }
+
+        /* Ẩn UI Web */
+        nav, .btn, .alert, .master-prompt-box, .url-input-overlay, .prompt-box, label, .edit-btn, h1, .no-image-print, .badge, span.badge, .back-cover-data-row, .studio-container > div:first-child { display: none !important; }
+        
+        .studio-container { 
+            width: 100% !important; 
+            margin: 0 !important; 
+            padding: 0 !important; 
+            max-width: none !important; 
+            display: block !important; 
+        }
+
+        /* --- 3. CẤU HÌNH TỪNG TRANG (BÌA, NỘI DUNG, BÌA SAU) --- */
+        .print-cover-page, .panel-row, .print-back-cover {
+            width: 297mm !important; 
+            height: 210mm !important; /* Chiều cao chuẩn A4 */
+            
+            /* NGẮT TRANG: Bắt buộc để nhảy trang sau khi in xong thẻ này */
+            break-after: page !important;
+            page-break-after: always !important;
+            page-break-inside: avoid !important;
+            
+            /* Layout Flex để căn giữa NỘI DUNG bên trong từng trang */
+            display: flex !important;
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center;    
+            
+            margin: 0 !important; 
+            padding: 0 !important;
+            position: relative;
+            left: 0 !important; /* Đảm bảo bám sát lề trái */
+        }
+
+        /* --- 4. TINH CHỈNH BÌA TRƯỚC --- */
+        .print-cover-page {
+            background-color: #0d3b66 !important; 
+            color: white !important;
+            border: 15px solid #fdf6e3; 
+            box-sizing: border-box !important; /* Tính viền vào kích thước tổng */
+        }
+        
+        /* Div bao quanh nội dung để căn giữa tuyệt đối */
+        .cover-content-wrapper {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            width: 100%; 
+            margin-top: 20px; /* Bù trừ cho cái top-bar */
+        }
+
+        .cover-top-bar {
+            background-color: #f1c40f; color: #0d3b66; padding: 10px 40px;
+            font-weight: bold; text-transform: uppercase; letter-spacing: 2px;
+            border-radius: 0 0 15px 15px; font-family: sans-serif;
+            position: absolute; top: 0; 
+            z-index: 10;
+        }
+
+        .print-cover-title { 
+            font-size: 3.5rem; font-weight: bold; text-align: center; 
+            margin-bottom: 20px; line-height: 1.1; font-family: 'Playfair Display', serif;
+            text-shadow: 3px 3px 0px #000; max-width: 90%;
+        }
+        
+        .cover-image-container {
+            width: 50%; height: 110mm; /* Cố định chiều cao ảnh bìa */
+            background-color: #fff; border: 5px solid #f1c40f;
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .cover-image-img { width: 100%; height: 100%; object-fit: cover; }
+        .print-cover-subtitle { font-size: 1.2rem; font-style: italic; opacity: 0.9; }
+
+        /* --- 5. TINH CHỈNH TRANG NỘI DUNG --- */
+        .panel-row { 
+            background: white !important; 
+            border: none !important; 
+            /* Padding an toàn: Trên/Dưới 10mm, Trái/Phải 20mm để không bị sát mép giấy */
+            padding: 10mm 20mm !important; 
+            box-sizing: border-box !important;
+        }
+        
+        .panel-preview { 
+            order: 1; width: 100%; height: 65%; /* Ảnh chiếm 65% */
+            display: flex; align-items: center; justify-content: center; 
+            background: none !important; border: none !important; margin-bottom: 10px;
+        }
+        .comic-image { 
+            max-width: 95%; max-height: 100%; /* Giảm nhẹ max-width để tránh bị cắt lề */
+            object-fit: contain; 
+            border: 3px solid #333 !important; box-shadow: 5px 5px 0px #eee;
+        }
+        
+        .panel-info { 
+            order: 2; width: 100%; height: 25%; 
+            text-align: center; border: 2px solid #333 !important; 
+            background-color: #fff9c4 !important; padding: 15px !important; 
+            border-radius: 12px; display: flex; align-items: center; justify-content: center;
+        }
+        .caption-text { 
+            font-size: 16pt; line-height: 1.3; color: #000; 
+            font-family: 'Comic Neue', cursive, sans-serif; font-weight: bold; 
+        }
+        .page-number-print { 
+            position: absolute; bottom: 5mm; 
+            font-size: 10pt; color: #aaa; 
+        }
+
+        /* --- 6. BÌA SAU --- */
+        .print-back-cover {
+            background-color: #fdf6e3 !important; color: #333 !important;
+            padding: 40px !important; border: 15px solid #0d3b66;
+            box-sizing: border-box !important;
+            justify-content: space-between;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container studio-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>🎨 Comic Studio: {{ title }}</h1>
+        <div>
+            <button onclick="window.print()" class="btn btn-success me-2"><i class="bi bi-printer"></i> Print Book (PDF)</button>
+            <a href="{{ url_for('saved_stories_page') }}" class="btn btn-secondary">Back</a>
+        </div>
+    </div>
+
+    <div class="print-cover-page">
+        <div class="cover-top-bar">Graded Readers Library</div>
+        
+        <div class="cover-content-wrapper"> 
+            <div class="print-cover-title">{{ title }}</div>
+            
+            <div class="cover-image-container">
+                {% if panels|length > 0 and panels[0].image_url %}
+                    <img src="{{ panels[0].image_url }}" class="cover-image-img">
+                {% else %}
+                    <div style="color: #0d3b66; text-align: center;">
+                        <i class="bi bi-image" style="font-size: 3rem;"></i>
+                        <p>Cover Image (Panel 1)<br>Not uploaded yet</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="print-cover-subtitle">Written & Illustrated by Story Craft Press</div>
+        </div>
+        </div>
+
+    <div class="master-prompt-box">
+        <h5><i class="bi bi-lightning-charge-fill"></i> Batch Generation Prompts</h5>
+        <p class="mb-2">Copy these prompts to Midjourney/DALL-E to generate images.</p>
+        <button class="btn btn-primary" onclick="copyMasterPrompt()">Copy All Prompts</button>
+        <div id="master-prompt-content" style="display:none;">
+            {% for panel in panels %}
+                {% if panel.panel_number != 999 %}
+-- Panel {{ panel.panel_number }}: {{ panel.prompt }}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <input type="hidden" id="comic_id" value="{{ comic_id }}">
+
+    {% for panel in panels %}
+        {% if panel.panel_number == 999 %}
+            <div class="back-cover-data-row d-none"><span id="back-data-json">{{ panel.caption }}</span></div>
+        {% else %}
+            <div class="panel-row">
+                <div class="panel-info">
+                    <span class="badge bg-secondary mb-2">PANEL {{ panel.panel_number }}</span>
+                    <div class="prompt-box" data-prompt="{{ panel.prompt }}" onclick="copyToClipboard(this.dataset.prompt, this)">
+                        {{ panel.prompt }}
+                    </div>
+                    <div class="caption-text">{{ panel.caption | replace('"', '') }}</div> 
+                    </div>
+
+                <div class="panel-preview">
+                    <img src="{{ panel.image_url or '' }}" id="img-{{ loop.index }}" class="comic-image {{ 'd-block' if panel.image_url else 'd-none' }}">
+                    
+                    <div class="url-input-overlay {{ 'd-none' if panel.image_url else 'd-block' }}" id="input-group-{{ loop.index }}">
+                        <input type="file" class="form-control mb-2" id="file-input-{{ loop.index }}" accept="image/*">
+                        <button class="btn btn-primary w-100" onclick="uploadImage('{{ loop.index }}', '{{ panel.panel_number }}')">Upload & Save</button>
+                    </div>
+                    <button class="btn btn-sm btn-light position-absolute top-0 end-0 m-2 edit-btn {{ 'd-block' if panel.image_url else 'd-none' }}" 
+                            id="btn-edit-{{ loop.index }}" onclick="reEditImage('{{ loop.index }}')">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                </div>
+                <div class="page-number-print">- {{ loop.index }} -</div>
+            </div>
+        {% endif %}
+    {% endfor %}
+
+    <div class="print-back-cover">
+        <div class="back-cover-header"><div class="series-title">Story Craft Graded Readers</div></div>
+        <div class="back-cover-body">
+            <div class="back-cover-summary" id="print-summary">Loading summary...</div>
+            <div class="info-grid">
+                <div class="info-item"><strong>Theme:</strong> <span id="print-theme">...</span></div>
+                <div class="info-item"><strong>CEFR Level:</strong> <span id="print-level">...</span></div>
+                <div class="info-item"><strong>Word Count:</strong> ~150 words</div>
+                <div class="info-item"><strong>Genre:</strong> Fiction</div>
+            </div>
+        </div>
+        <div class="back-cover-footer">
+            <div class="publisher-logo"><i class="bi bi-book-half"></i> Story Craft Press</div>
+            <div class="barcode"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const dataSpan = document.getElementById('back-data-json');
+        if (dataSpan) {
+            try {
+                const data = JSON.parse(dataSpan.innerText);
+                document.getElementById('print-summary').innerText = data.summary || "A wonderful story waiting for you.";
+                document.getElementById('print-theme').innerText = data.theme || "General";
+                document.getElementById('print-level').innerText = data.level || "Beginner";
+            } catch (e) { console.error("Back cover data error", e); }
+        }
+    });
+
+    function copyMasterPrompt() {
+        const text = document.getElementById('master-prompt-content').innerText;
+        navigator.clipboard.writeText(text).then(() => alert("Prompts Copied!"));
+    }
+
+    function copyToClipboard(text, element) {
+        navigator.clipboard.writeText(text).then(() => {
+            const originalBg = element.style.backgroundColor;
+            element.style.backgroundColor = "#d4edda"; 
+            setTimeout(() => element.style.backgroundColor = originalBg, 500);
+        });
+    }
+
+    async function uploadImage(loopIndex, panelNum) {
+        const fileInput = document.getElementById(`file-input-${loopIndex}`);
+        const file = fileInput.files[0];
+        if (!file) { alert("Select a file!"); return; }
+        const comicId = document.getElementById('comic_id').value;
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('comic_id', comicId);
+        formData.append('panel_number', panelNum);
+        try {
+            const res = await fetch('/upload-panel-image', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.url) {
+                const img = document.getElementById(`img-${loopIndex}`);
+                const inputGroup = document.getElementById(`input-group-${loopIndex}`);
+                const editBtn = document.getElementById(`btn-edit-${loopIndex}`);
+                img.src = data.url;
+                img.classList.remove('d-none'); img.classList.add('d-block');
+                inputGroup.classList.remove('d-block'); inputGroup.classList.add('d-none');
+                editBtn.classList.remove('d-none'); editBtn.classList.add('d-block');
+            } else { alert("Upload failed"); }
+        } catch (e) { alert("Error uploading"); }
+    }
+
+    function reEditImage(loopIndex) {
+        const img = document.getElementById(`img-${loopIndex}`);
+        const inputGroup = document.getElementById(`input-group-${loopIndex}`);
+        const editBtn = document.getElementById(`btn-edit-${loopIndex}`);
+        img.classList.add('d-none');
+        editBtn.classList.add('d-none');
+        inputGroup.classList.remove('d-none');
+    }
+</script>
+{% endblock %}
