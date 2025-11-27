@@ -18,9 +18,19 @@ app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'secret_key_123')
 
 # Đường dẫn DB
 base_dir = os.path.dirname(os.path.abspath(__file__))
-db_path = os.path.join(base_dir, 'instance', 'story_project.db')
+
+# Kiểm tra xem có ổ đĩa gắn ngoài (/var/data) không? (Trên Render sẽ có)
+if os.path.exists('/var/data'):
+    db_path = '/var/data/story_project.db'
+    print("--> USING RENDER PERSISTENT DISK")
+else:
+    # Nếu chạy trên máy tính thì vẫn lưu vào instance như cũ
+    db_path = os.path.join(base_dir, 'instance', 'story_project.db')
+    print("--> USING LOCAL INSTANCE FOLDER")
+
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# --------------------------------------------------
 
 # Đường dẫn Upload
 UPLOAD_FOLDER = os.path.join(base_dir, 'static', 'uploads')
@@ -38,7 +48,8 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
-    # Quan hệ: 1 User có nhiều Story
+    # Thêm cột này để quản lý Khóa/Mở khóa
+    is_locked = db.Column(db.Boolean, default=False) 
     stories = db.relationship('Story', backref='author', lazy=True)
 
 class Style(db.Model):
@@ -224,34 +235,57 @@ def create_comic_script_prompt(story_content):
       "back_cover": {{ "summary": "...", "theme": "...", "level": "..." }}
     }}
     """
-
-# --- 6. ROUTES AUTH (LOGIN/REGISTER) ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        
         user = User.query.filter_by(username=username).first()
+        
+        # Kiểm tra xem có bị khóa không (Code Admin Pro)
+        if user and user.is_locked:
+            flash('This account has been LOCKED by Admin.', 'danger')
+            return render_template('login.html')
+
         if user and check_password_hash(user.password_hash, password):
             login_user(user)
             return redirect(url_for('index'))
+            
         flash('Invalid username or password', 'danger')
     return render_template('login.html')
 
-@app.route('/register', methods=['GET', 'POST'])
+# --- 6. ROUTES AUTH (LOGIN/REGISTER) ---
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        # --- THÊM ĐOẠN KIỂM TRA MÃ NÀY ---
-        code = request.form.get('secret_code')
-        if code != "GV_VIP_2025":  # <--- BẠN TỰ ĐẶT MÃ Ở ĐÂY
-            flash('Wrong Registration Code! Please ask the Admin.', 'danger')
-            return redirect(url_for('register'))
-        # ----------------------------------
-
         username = request.form['username']
         password = request.form['password']
+        code = request.form.get('secret_code')
+
+        # --- CẤU HÌNH 2 MÃ BÍ MẬT ---
+        TEACHER_CODE = "GV_VIP_2025"       # Mã cho đồng nghiệp
+        ADMIN_CODE = "BOSS_ONLY_999"       # Mã riêng cho bạn (Sửa lại nhé!)
+        # ----------------------------
+
+        # TRƯỜNG HỢP 1: Dùng mã Admin
+        if code == ADMIN_CODE:
+            # Cho phép tạo mọi tên, kể cả 'admin'
+            pass 
+            
+        # TRƯỜNG HỢP 2: Dùng mã Giáo viên
+        elif code == TEACHER_CODE:
+            # Nếu dùng mã giáo viên mà đòi đặt tên 'admin' -> CHẶN
+            if username.lower() == 'admin':
+                flash("This code cannot create Admin account!", "danger")
+                return redirect(url_for('register'))
         
+        # TRƯỜNG HỢP 3: Mã sai bét
+        else:
+            flash('Wrong Registration Code!', 'danger')
+            return redirect(url_for('register'))
+
+        # --- ĐOẠN LƯU VÀO DATABASE (GIỮ NGUYÊN) ---
         if User.query.filter_by(username=username).first():
             flash('Username already exists', 'warning')
             return redirect(url_for('register'))
@@ -259,8 +293,15 @@ def register():
         new_user = User(username=username, password_hash=generate_password_hash(password))
         db.session.add(new_user)
         db.session.commit()
-        flash('Registration successful! Please login.', 'success')
+        
+        # Thông báo khác nhau cho ngầu
+        if username.lower() == 'admin':
+            flash('Welcome, Boss! Admin account created.', 'success')
+        else:
+            flash('Registration successful! Please login.', 'success')
+            
         return redirect(url_for('login'))
+        
     return render_template('register.html')
 
 @app.route('/logout')
@@ -305,22 +346,34 @@ def reset_password():
         secret_code = request.form['secret_code']
         new_password = request.form['new_password']
 
-        # 1. Kiểm tra Mã Bí Mật
-        if secret_code != "GV_VIP_2025": # <--- MÃ CỦA BẠN
-            flash('Wrong Secret Code!', 'danger')
-            return redirect(url_for('reset_password'))
+        # --- CẤU HÌNH MÃ ---
+        TEACHER_CODE = "GV_VIP_2025"
+        ADMIN_CODE = "BOSS_ONLY_999" # Phải khớp với bên trên
+        # -------------------
 
-        # 2. Tìm user
+        # 1. Kiểm tra User có tồn tại không
         user = User.query.filter_by(username=username).first()
         if not user:
             flash('Username not found.', 'warning')
             return redirect(url_for('reset_password'))
 
+        # 2. Logic Phân Quyền Reset
+        if user.username == 'admin':
+            # Muốn reset nick Admin thì PHẢI dùng mã Admin
+            if secret_code != ADMIN_CODE:
+                flash('Only the Boss Key can reset Admin password!', 'danger')
+                return redirect(url_for('reset_password'))
+        else:
+            # Nick thường thì dùng mã nào cũng được (miễn là đúng 1 trong 2)
+            if secret_code not in [TEACHER_CODE, ADMIN_CODE]:
+                flash('Wrong Secret Code!', 'danger')
+                return redirect(url_for('reset_password'))
+
         # 3. Đổi mật khẩu
         user.password_hash = generate_password_hash(new_password)
         db.session.commit()
         
-        flash('Password reset successful! Please login.', 'success')
+        flash('Password reset successful!', 'success')
         return redirect(url_for('login'))
 
     return render_template('reset_password.html')
@@ -512,30 +565,52 @@ def add_quiz_to_saved():
 
 
 
-# --- ADMIN ROUTE (Thêm vào cuối file app.py) ---
-@app.route('/admin/users')
+# --- ADMIN DASHBOARD PRO ---
+@app.route('/admin/dashboard')
 @login_required
-def admin_users():
-    # Bảo mật: Chỉ user tên 'admin' mới được vào
-    if current_user.username != 'admin': 
-        return "Access Denied: You are not Admin!", 403
-    
+def admin_dashboard():
+    if current_user.username != 'admin': return "Access Denied", 403
     users = User.query.all()
-    
-    # Tạo giao diện đơn giản
-    html = """
-    <div style='font-family: sans-serif; padding: 50px; max-width: 800px; margin: 0 auto;'>
-        <h1 style='color: #d35400;'>👑 Admin Dashboard</h1>
-        <p><a href='/'>&larr; Back to Home</a></p>
-        <table border='1' cellpadding='10' style='border-collapse: collapse; width: 100%;'>
-            <tr style='background: #eee;'><th>ID</th><th>Username</th><th>Stories Count</th></tr>
-    """
-    
-    for u in users:
-        html += f"<tr><td>{u.id}</td><td><b>{u.username}</b></td><td>{len(u.stories)} stories</td></tr>"
-    
-    html += "</table></div>"
-    return html
+    return render_template('admin.html', users=users)
+
+# Chức năng 1: Reset mật khẩu về 123456
+@app.route('/admin/reset-pass/<int:user_id>', methods=['POST'])
+@login_required
+def admin_reset_pass(user_id):
+    if current_user.username != 'admin': return "Access Denied", 403
+    user = User.query.get(user_id)
+    if user:
+        user.password_hash = generate_password_hash("123456") # Mật khẩu mặc định
+        db.session.commit()
+        flash(f"Password for {user.username} reset to '123456'", "success")
+    return redirect(url_for('admin_dashboard'))
+
+# Chức năng 2: Khóa / Mở khóa tài khoản
+@app.route('/admin/toggle-lock/<int:user_id>', methods=['POST'])
+@login_required
+def admin_toggle_lock(user_id):
+    if current_user.username != 'admin': return "Access Denied", 403
+    user = User.query.get(user_id)
+    if user and user.username != 'admin': # Không được khóa chính mình
+        user.is_locked = not user.is_locked # Đảo ngược trạng thái
+        status = "LOCKED" if user.is_locked else "UNLOCKED"
+        db.session.commit()
+        flash(f"User {user.username} is now {status}", "warning")
+    return redirect(url_for('admin_dashboard'))
+
+# Chức năng 3: Xóa tài khoản
+@app.route('/admin/delete/<int:user_id>', methods=['POST'])
+@login_required
+def admin_delete_user(user_id):
+    if current_user.username != 'admin': return "Access Denied", 403
+    user = User.query.get(user_id)
+    if user and user.username != 'admin': # Không được xóa chính mình
+        # Xóa hết truyện và comic của user đó trước
+        Story.query.filter_by(user_id=user.id).delete()
+        db.session.delete(user)
+        db.session.commit()
+        flash(f"User {user.username} deleted permanently.", "danger")
+    return redirect(url_for('admin_dashboard'))
 
 # --- AUTO CREATE DB ---
 with app.app_context():

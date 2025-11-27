@@ -151,7 +151,7 @@
                 <i class="bi bi-person-circle"></i> {{ current_user.username }}
             </div>
         {% if current_user.username == 'admin' %}
-                <a href="{{ url_for('admin_users') }}" style="color: #e74c3c; font-weight: bold; border: 2px dashed #e74c3c; margin-bottom: 15px;">
+                <a href="{{ url_for('admin_dashboard') }}" style="color: #e74c3c; font-weight: bold; border: 2px dashed #e74c3c; margin-bottom: 15px;">
                     <i class="bi bi-shield-lock-fill"></i> Admin Panel
                 </a>
             {% endif %}

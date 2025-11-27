@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="text-danger"><i class="bi bi-shield-lock-fill"></i> Admin Command Center</h1>
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Back to Home</a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Status</th>
+                    <th>Stats</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr class="{{ 'table-danger' if user.is_locked else '' }}">
+                    <td>{{ user.id }}</td>
+                    <td>
+                        <strong>{{ user.username }}</strong>
+                        {% if user.username == 'admin' %} <span class="badge bg-warning text-dark">BOSS</span> {% endif %}
+                    </td>
+                    <td>
+                        {% if user.is_locked %}
+                            <span class="badge bg-danger">LOCKED</span>
+                        {% else %}
+                            <span class="badge bg-success">Active</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ user.stories|length }} stories</td>
+                    <td class="text-end">
+                        {% if user.username != 'admin' %}
+                            <form action="{{ url_for('admin_reset_pass', user_id=user.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Reset password to 123456?');">
+                                <button class="btn btn-sm btn-info text-white" title="Reset Pass to '123456'"><i class="bi bi-key"></i></button>
+                            </form>
+
+                            <form action="{{ url_for('admin_toggle_lock', user_id=user.id) }}" method="POST" class="d-inline">
+                                <button class="btn btn-sm {{ 'btn-success' if user.is_locked else 'btn-warning' }}" title="Lock/Unlock">
+                                    <i class="bi {{ 'bi-unlock-fill' if user.is_locked else 'bi-lock-fill' }}"></i>
+                                </button>
+                            </form>
+
+                            <form action="{{ url_for('admin_delete_user', user_id=user.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this user PERMANENTLY?');">
+                                <button class="btn btn-sm btn-danger" title="Delete User"><i class="bi bi-trash-fill"></i></button>
+                            </form>
+                        {% else %}
+                            <span class="text-muted">No actions</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
