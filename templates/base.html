@@ -145,12 +145,28 @@
 <body>
     <nav>
         <h2><i class="bi bi-book-half"></i> Story Craft</h2>
-        <a href="{{ url_for('index') }}"><i class="bi bi-feather"></i> Write Story</a>
-        <a href="{{ url_for('styles_page') }}"><i class="bi bi-pen-fill"></i> Style Bank</a>
-        <a href="{{ url_for('saved_stories_page') }}"><i class="bi bi-collection-fill"></i> Library</a>
-        <a href="{{ url_for('translate_page') }}"><i class="bi bi-translate"></i> Folktales</a> 
         
-        <div style="margin-top: auto; padding-top: 20px; border-top: 1px dashed rgba(255,255,255,0.2); font-size: 0.85em; color: #bcaaa4; font-style: italic;">
+        {% if current_user.is_authenticated %}
+            <div class="mb-4 text-center" style="color: #f1c40f;">
+                <i class="bi bi-person-circle"></i> {{ current_user.username }}
+            </div>
+        {% if current_user.username == 'admin' %}
+                <a href="{{ url_for('admin_users') }}" style="color: #e74c3c; font-weight: bold; border: 2px dashed #e74c3c; margin-bottom: 15px;">
+                    <i class="bi bi-shield-lock-fill"></i> Admin Panel
+                </a>
+            {% endif %}
+            ```
+            <a href="{{ url_for('index') }}"><i class="bi bi-feather"></i> Write Story</a>
+            <a href="{{ url_for('styles_page') }}"><i class="bi bi-pen-fill"></i> Style Bank</a>
+            <a href="{{ url_for('saved_stories_page') }}"><i class="bi bi-collection-fill"></i> Library</a>
+            <a href="{{ url_for('translate_page') }}"><i class="bi bi-translate"></i> Folktales</a> 
+            <a href="{{ url_for('logout') }}" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="bi bi-box-arrow-right"></i> Logout</a>
+        {% else %}
+            <a href="{{ url_for('login') }}" class="active"><i class="bi bi-key-fill"></i> Login</a>
+            <a href="{{ url_for('register') }}"><i class="bi bi-person-plus-fill"></i> Register</a>
+        {% endif %}
+        
+        <div style="padding-top: 20px; border-top: 1px dashed rgba(255,255,255,0.2); font-size: 0.85em; color: #bcaaa4; font-style: italic; margin-top: 20px;">
             "Every story lives in the heart of a child."
         </div>
     </nav>
