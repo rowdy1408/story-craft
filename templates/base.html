@@ -24,7 +24,6 @@
         }
 
         body { 
-            /* QUAN TRỌNG: Xóa display: flex đi, dùng block mặc định */
             display: block; 
             font-family: 'Quicksand', sans-serif; 
             background-color: var(--bg-paper); 
@@ -33,24 +32,18 @@
 
         /* --- 1. SIDEBAR (MÁY TÍNH) --- */
         nav { 
-    /* Ghim cố định bên trái */
-    position: fixed; 
-    top: 0; left: 0; 
-    /* bottom: 0; -> Xóa hoặc giữ đều được, nhưng dòng dưới quan trọng hơn */
-    height: 100vh; /* THÊM DÒNG NÀY: Ép chiều cao bằng 100% màn hình */
-    width: 260px; 
-    
-    background: var(--sidebar-wood); 
-    color: var(--sidebar-text); 
-    padding: 30px 20px; 
-    
-    overflow-y: auto; 
-    z-index: 1000;
-    border-right: 5px solid #3e2723;
-    
-    /* Dàn nội dung bên trong Sidebar */
-    display: flex; flex-direction: column;
-}
+            position: fixed; 
+            top: 0; left: 0; 
+            height: 100vh;
+            width: 260px; 
+            background: var(--sidebar-wood); 
+            color: var(--sidebar-text); 
+            padding: 30px 20px; 
+            overflow-y: auto; 
+            z-index: 1000;
+            border-right: 5px solid #3e2723;
+            display: flex; flex-direction: column;
+        }
 
         /* Ẩn nút 3 gạch trên Desktop */
         .navbar-toggler { display: none !important; }
@@ -81,14 +74,10 @@
 
         /* --- 2. NỘI DUNG CHÍNH (ĐẨY SANG PHẢI) --- */
         .main-container { 
-            /* Cách lề trái 260px để nhường chỗ cho Sidebar */
             margin-left: 260px; 
             padding: 40px; 
-            
-            /* Đảm bảo chiều cao tối thiểu */
             min-height: 100vh;
-            box-sizing: border-box; /* Tính cả padding vào độ rộng */
-            
+            box-sizing: border-box; 
             background-image: radial-gradient(#d7ccc8 1px, transparent 1px); 
             background-size: 20px 20px;
         }
@@ -110,35 +99,23 @@
            📱 GIAO DIỆN MOBILE (DƯỚI 992px)
            ========================================= */
         @media (max-width: 992px) {
-            /* Reset lại Sidebar thành Header */
             nav { 
-                position: relative; /* Hủy chế độ ghim */
+                position: relative; 
                 width: 100%; height: auto; padding: 10px 20px;
                 border-right: none; border-bottom: 5px solid #3e2723;
                 z-index: 1001;
             }
-
-            /* Reset lại Nội dung chính */
-            .main-container { 
-                margin-left: 0; /* Hủy lề trái */
-                padding: 15px; 
-            }
-
-            /* Header Mobile */
+            .main-container { margin-left: 0; padding: 15px; }
             .mobile-header { 
                 display: flex; justify-content: space-between; align-items: center; 
                 margin-bottom: 0; text-align: left; 
             }
             nav h2 { font-size: 1.5rem; }
-
-            /* Hiện nút bấm */
             .navbar-toggler { display: block !important; }
             .navbar-collapse { display: none !important; margin-top: 15px; } 
             .navbar-collapse.show { display: flex !important; flex-direction: column; }
-
             #sidebarMenu { background: rgba(0,0,0,0.1); margin: 0 -20px; padding: 20px; }
             nav a:hover { transform: none; background-color: rgba(255,255,255,0.2); }
-            
             .content-card { padding: 20px; }
             .floating-btn { width: 50px; height: 50px; font-size: 20px; bottom: 20px; right: 15px; }
             .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -150,28 +127,23 @@
 <body>
     <nav>
         <div class="container-fluid flex-lg-column align-items-lg-stretch p-0">
-            
             <div class="d-flex align-items-center mobile-header">
                 <h2 class="mb-0"><i class="bi bi-book-half"></i> Story Weaver</h2>
-                
                 <button class="navbar-toggler border-0 text-warning" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu">
                     <i class="bi bi-list" style="font-size: 2rem; color: var(--primary-btn);"></i>
                 </button>
             </div>
 
             <div class="collapse navbar-collapse flex-column" id="sidebarMenu">
-                
                 {% if current_user.is_authenticated %}
                     <div class="mb-4 text-center" style="color: #f1c40f; margin-top: 20px;">
                         <i class="bi bi-person-circle"></i> {{ current_user.username }}
                     </div>
-                    
                     {% if current_user.username == 'admin' %}
                         <a href="{{ url_for('admin_dashboard') }}" style="color: #e74c3c; font-weight: bold; border: 2px dashed #e74c3c; margin-bottom: 15px;">
                             <i class="bi bi-shield-lock-fill"></i> Admin Panel
                         </a>
                     {% endif %}
-                
                     <a href="{{ url_for('index') }}"><i class="bi bi-feather"></i> Write Story</a>
                     <a href="{{ url_for('styles_page') }}"><i class="bi bi-pen-fill"></i> Style Bank</a>
                     <a href="{{ url_for('saved_stories_page') }}"><i class="bi bi-collection-fill"></i> Library</a>
@@ -181,10 +153,7 @@
                     <a href="{{ url_for('login') }}" class="active mt-3"><i class="bi bi-key-fill"></i> Login</a>
                     <a href="{{ url_for('register') }}"><i class="bi bi-person-plus-fill"></i> Register</a>
                 {% endif %}
-
-                <div class="footer-quote">
-                    "Every story lives in the heart of a child."
-                </div>
+                <div class="footer-quote">"Every story lives in the heart of a child."</div>
             </div>
         </div>
     </nav>
@@ -254,5 +223,8 @@
         const toastList = [...toastElList].map(toastEl => new bootstrap.Toast(toastEl, { delay: 5000 }));
         toastList.forEach(toast => toast.show());
     </script>
+    
+    {% block scripts %}{% endblock %}
+
 </body>
 </html>

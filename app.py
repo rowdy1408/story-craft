@@ -15,30 +15,31 @@ import PyPDF2
 import docx
 
 # --- 1. CẤU HÌNH BAN ĐẦU ---
-load_dotenv()
+load_dotenv() # Load biến môi trường từ file .env
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'secret_key_123')
+# Lấy Secret Key từ file .env, nếu không có thì dùng key tạm (nhưng nên có trong .env)
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default_secret_key_change_me')
 
 # Đường dẫn DB
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Kiểm tra xem có ổ đĩa gắn ngoài (/var/data) không? (Trên Render sẽ có)
+# Kiểm tra xem có ổ đĩa gắn ngoài (/var/data) không? (Dành cho Render)
 if os.path.exists('/var/data'):
     db_path = '/var/data/story_project.db'
     print("--> USING RENDER PERSISTENT DISK")
 else:
-    # Nếu chạy trên máy tính thì vẫn lưu vào instance như cũ
+    # Nếu chạy trên máy tính cá nhân
     db_path = os.path.join(base_dir, 'instance', 'story_project.db')
     print("--> USING LOCAL INSTANCE FOLDER")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# --------------------------------------------------
 
 # Đường dẫn Upload
 UPLOAD_FOLDER = os.path.join(base_dir, 'static', 'uploads')
 if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER)
+
 instance_folder = os.path.join(base_dir, 'instance')
 if not os.path.exists(instance_folder): os.makedirs(instance_folder)
 
@@ -52,7 +53,6 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
-    # Thêm cột này để quản lý Khóa/Mở khóa
     is_locked = db.Column(db.Boolean, default=False) 
     stories = db.relationship('Story', backref='author', lazy=True)
 
@@ -65,7 +65,6 @@ class Story(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    # Thêm user_id để biết truyện của ai
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     comics = db.relationship('Comic', backref='story', lazy=True)
 
@@ -79,12 +78,7 @@ class Feedback(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     message = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.String(50), default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    
-    # --- SỬA DÒNG NÀY (Thêm lazy='joined') ---
-    # Dòng này giúp code tự động nối bảng User để lấy tên khi truy vấn Feedback
     user = db.relationship('User', backref=db.backref('feedbacks', lazy=True))
-    
-# Nhớ thêm: from datetime import datetime vào đầu file app.py nhé!
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -92,9 +86,10 @@ def load_user(user_id):
 
 # --- 3. HELPER & CONFIG ---
 def configure_ai():
+    # Lấy API Key từ biến môi trường để bảo mật
     api_key = os.environ.get("GOOGLE_API_KEY")
     if not api_key:
-        print("ERROR: GOOGLE_API_KEY is empty.")
+        print("ERROR: GOOGLE_API_KEY is empty in .env file.")
         return None
     return api_key
 
@@ -126,7 +121,11 @@ def generate_story_ai(api_key, prompt):
             "messages": [{"role": "user", "content": prompt}], 
             "temperature": 0.7 
         })
-        headers = {'Accept': 'application/json', 'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
+        headers = {
+            'Accept': 'application/json', 
+            'Authorization': f'Bearer {api_key}', 
+            'Content-Type': 'application/json'
+        }
         print("--- Sending prompt to Yescale API... ---")
         conn.request("POST", "/v1/chat/completions", payload, headers)
         res = conn.getresponse()
@@ -138,6 +137,7 @@ def generate_story_ai(api_key, prompt):
         response_json = json.loads(data)
         if 'choices' in response_json and len(response_json['choices']) > 0:
              content = response_json['choices'][0]['message']['content']
+             # Xóa dấu ** nếu AI trả về markdown bold quá nhiều
              return content.replace('**', '') 
         else:
              return f"ERROR: Invalid response structure. {data}"
@@ -270,7 +270,8 @@ def create_comic_script_prompt(story_content):
       "back_cover": {{ "summary": "...", "theme": "...", "level": "..." }}
     }}
     """
-@app.route('/login', methods=['GET', 'POST'])
+
+# --- 6. ROUTES AUTH (LOGIN/REGISTER) ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -286,8 +287,8 @@ def login():
             return render_template('login.html')
 
         # --- LOGIC BẢO MẬT ADMIN ---
-        if user and user.username == 'admin':
-            # Admin bắt buộc phải nhập đúng PIN (ví dụ PIN cứng là 8888)
+        if user and user.username.lower() == 'admin':
+            # Mã PIN cứng cho Admin
             if admin_pin != "25121509": 
                 flash('Admin Security PIN required or incorrect!', 'danger')
                 return render_template('login.html')
@@ -300,7 +301,6 @@ def login():
         flash('Invalid username or password', 'danger')
     return render_template('login.html')
 
-# --- 6. ROUTES AUTH (LOGIN/REGISTER) ---
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -309,28 +309,20 @@ def register():
         code = request.form.get('secret_code')
 
         # --- CẤU HÌNH 2 MÃ BÍ MẬT ---
-        TEACHER_CODE = "GV_VIP_2025"       # Mã cho đồng nghiệp
-        ADMIN_CODE = "BOSS_ONLY_999"       # Mã riêng cho bạn (Sửa lại nhé!)
+        TEACHER_CODE = "GV_VIP_2025"       
+        ADMIN_CODE = "BOSS_ONLY_999"      
         # ----------------------------
 
-        # TRƯỜNG HỢP 1: Dùng mã Admin
         if code == ADMIN_CODE:
-            # Cho phép tạo mọi tên, kể cả 'admin'
             pass 
-            
-        # TRƯỜNG HỢP 2: Dùng mã Giáo viên
         elif code == TEACHER_CODE:
-            # Nếu dùng mã giáo viên mà đòi đặt tên 'admin' -> CHẶN
             if username.lower() == 'admin':
                 flash("This code cannot create Admin account!", "danger")
                 return redirect(url_for('register'))
-        
-        # TRƯỜNG HỢP 3: Mã sai bét
         else:
             flash('Wrong Registration Code!', 'danger')
             return redirect(url_for('register'))
 
-        # --- ĐOẠN LƯU VÀO DATABASE (GIỮ NGUYÊN) ---
         if User.query.filter_by(username=username).first():
             flash('Username already exists', 'warning')
             return redirect(url_for('register'))
@@ -339,7 +331,6 @@ def register():
         db.session.add(new_user)
         db.session.commit()
         
-        # Thông báo khác nhau cho ngầu
         if username.lower() == 'admin':
             flash('Welcome, Boss! Admin account created.', 'success')
         else:
@@ -355,7 +346,7 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# --- 7. ROUTES CHÍNH (LOGIC CŨ + LOGIN REQUIRED) ---
+# --- 7. ROUTES CHÍNH ---
 @app.route('/')
 @login_required
 def index():
@@ -365,7 +356,7 @@ def index():
 @login_required
 def handle_generation():
     api_key = configure_ai()
-    if not api_key: return jsonify({"story_result": "ERROR: API Key missing."}), 500
+    if not api_key: return jsonify({"story_result": "ERROR: API Key missing or invalid."}), 500
     
     data = request.form
     all_styles = {s.name: s.content for s in Style.query.all()}
@@ -384,6 +375,7 @@ def handle_generation():
 
     prompt = create_prompt_for_ai(inputs)
     return jsonify({"story_result": generate_story_ai(api_key, prompt)})
+
 @app.route('/reset-password', methods=['GET', 'POST'])
 def reset_password():
     if request.method == 'POST':
@@ -391,30 +383,23 @@ def reset_password():
         secret_code = request.form['secret_code']
         new_password = request.form['new_password']
 
-        # --- CẤU HÌNH MÃ ---
         TEACHER_CODE = "GV_VIP_2025"
-        ADMIN_CODE = "BOSS_ONLY_999" # Phải khớp với bên trên
-        # -------------------
+        ADMIN_CODE = "BOSS_ONLY_999" 
 
-        # 1. Kiểm tra User có tồn tại không
         user = User.query.filter_by(username=username).first()
         if not user:
             flash('Username not found.', 'warning')
             return redirect(url_for('reset_password'))
 
-        # 2. Logic Phân Quyền Reset
         if user.username == 'admin':
-            # Muốn reset nick Admin thì PHẢI dùng mã Admin
             if secret_code != ADMIN_CODE:
                 flash('Only the Boss Key can reset Admin password!', 'danger')
                 return redirect(url_for('reset_password'))
         else:
-            # Nick thường thì dùng mã nào cũng được (miễn là đúng 1 trong 2)
             if secret_code not in [TEACHER_CODE, ADMIN_CODE]:
                 flash('Wrong Secret Code!', 'danger')
                 return redirect(url_for('reset_password'))
 
-        # 3. Đổi mật khẩu
         user.password_hash = generate_password_hash(new_password)
         db.session.commit()
         
@@ -423,26 +408,42 @@ def reset_password():
 
     return render_template('reset_password.html')
 
-# --- COMIC ROUTES ---
+# --- COMIC ROUTES (FIXED JSON LOGIC) ---
 @app.route('/create-comic/<int:story_id>', methods=['POST'])
 @login_required
 def create_comic_direct(story_id):
     story = Story.query.get_or_404(story_id)
-    # Bảo vệ: Chỉ chủ nhân truyện mới được tạo comic
     if story.user_id != current_user.id:
         return jsonify({"error": "Unauthorized: You do not own this story."}), 403
 
     api_key = configure_ai()
+    if not api_key: return jsonify({"error": "API Key Error"}), 500
+
     try:
         prompt = create_comic_script_prompt(story.content)
         script_json_str = generate_story_ai(api_key, prompt)
         
-        # Clean JSON Logic
+        # --- FIX: XỬ LÝ JSON AN TOÀN HƠN ---
         clean_json = script_json_str
-        if "```json" in clean_json: clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-        elif "```" in clean_json: clean_json = clean_json.split("```")[1].split("```")[0].strip()
+        # Nếu AI trả về trong block code markdown, lọc nó ra
+        if "```json" in clean_json:
+            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+        elif "```" in clean_json:
+            clean_json = clean_json.split("```")[1].split("```")[0].strip()
         
-        data = json.loads(clean_json)
+        # Fallback: Tìm dấu { đầu tiên và } cuối cùng để cắt chuỗi rác
+        start_idx = clean_json.find('{')
+        end_idx = clean_json.rfind('}') + 1
+        if start_idx != -1 and end_idx != -1:
+            clean_json = clean_json[start_idx:end_idx]
+
+        try:
+            data = json.loads(clean_json)
+        except json.JSONDecodeError as e:
+            print(f"JSON Parsing Error: {e} | Raw: {script_json_str}")
+            return jsonify({"error": "AI returned invalid JSON format. Please try again."}), 500
+        # -----------------------------------
+
         if 'panels' in data:
             panels_data = data['panels']
             back_cover = data.get('back_cover', {})
@@ -485,7 +486,6 @@ def upload_panel_image():
         comic_id = request.form.get('comic_id')
         panel_num = request.form.get('panel_number')
         
-        # Check ownership comic
         comic = Comic.query.get(comic_id)
         if not comic or comic.story.user_id != current_user.id:
             return jsonify({"error": "Unauthorized"}), 403
@@ -523,14 +523,13 @@ def styles_page(): return render_template('manage_styles.html', styles=Style.que
 @login_required
 def add_style(): 
     style_name = request.form['style_name']
-    style_content = request.form.get('style_content', '') # Lấy text nhập tay
+    style_content = request.form.get('style_content', '')
     
-    # Kiểm tra xem có file upload không
     file = request.files.get('style_file')
     if file and file.filename != '':
         extracted_text = extract_text_from_file(file)
         if extracted_text:
-            style_content = extracted_text # Ưu tiên lấy nội dung từ file
+            style_content = extracted_text
         else:
             flash("Error reading file. Please upload valid .pdf or .docx", "danger")
             return redirect(url_for('styles_page'))
@@ -559,7 +558,6 @@ def delete_style():
 @app.route('/saved-stories')
 @login_required
 def saved_stories_page():
-    # CHỈ HIỆN TRUYỆN CỦA NGƯỜI DÙNG HIỆN TẠI
     user_stories = Story.query.filter_by(user_id=current_user.id).order_by(Story.id.desc()).all()
     return render_template('saved_stories.html', stories=user_stories, user=current_user)
 
@@ -620,6 +618,10 @@ def add_quiz_to_saved():
 
     quiz_type = request.form.get('quiz_type')
     api_key = configure_ai()
+    if not api_key:
+         flash(f"API Key missing!", "danger")
+         return redirect(url_for('saved_stories_page'))
+
     try:
         prompt = create_quiz_only_prompt(story.content, quiz_type)
         quiz_content = generate_story_ai(api_key, prompt)
@@ -638,7 +640,7 @@ def send_feedback():
         db.session.add(Feedback(user_id=current_user.id, message=msg))
         db.session.commit()
         flash("Feedback sent to Admin. Thank you!", "success")
-    return redirect(request.referrer) # Quay lại trang cũ
+    return redirect(request.referrer)
 
 # --- ADMIN DASHBOARD PRO ---
 @app.route('/admin/dashboard')
@@ -646,42 +648,38 @@ def send_feedback():
 def admin_dashboard():
     if current_user.username != 'admin': return "Access Denied", 403
     users = User.query.all()
-    feedbacks = Feedback.query.order_by(Feedback.id.desc()).all() # Lấy feedback mới nhất
+    feedbacks = Feedback.query.order_by(Feedback.id.desc()).all()
     return render_template('admin.html', users=users, feedbacks=feedbacks)
 
-# Chức năng 1: Reset mật khẩu về 123456
 @app.route('/admin/reset-pass/<int:user_id>', methods=['POST'])
 @login_required
 def admin_reset_pass(user_id):
     if current_user.username != 'admin': return "Access Denied", 403
     user = User.query.get(user_id)
     if user:
-        user.password_hash = generate_password_hash("123456") # Mật khẩu mặc định
+        user.password_hash = generate_password_hash("123456")
         db.session.commit()
         flash(f"Password for {user.username} reset to '123456'", "success")
     return redirect(url_for('admin_dashboard'))
 
-# Chức năng 2: Khóa / Mở khóa tài khoản
 @app.route('/admin/toggle-lock/<int:user_id>', methods=['POST'])
 @login_required
 def admin_toggle_lock(user_id):
     if current_user.username != 'admin': return "Access Denied", 403
     user = User.query.get(user_id)
-    if user and user.username != 'admin': # Không được khóa chính mình
-        user.is_locked = not user.is_locked # Đảo ngược trạng thái
+    if user and user.username != 'admin':
+        user.is_locked = not user.is_locked
         status = "LOCKED" if user.is_locked else "UNLOCKED"
         db.session.commit()
         flash(f"User {user.username} is now {status}", "warning")
     return redirect(url_for('admin_dashboard'))
 
-# Chức năng 3: Xóa tài khoản
 @app.route('/admin/delete/<int:user_id>', methods=['POST'])
 @login_required
 def admin_delete_user(user_id):
     if current_user.username != 'admin': return "Access Denied", 403
     user = User.query.get(user_id)
-    if user and user.username != 'admin': # Không được xóa chính mình
-        # Xóa hết truyện và comic của user đó trước
+    if user and user.username != 'admin': 
         Story.query.filter_by(user_id=user.id).delete()
         db.session.delete(user)
         db.session.commit()
