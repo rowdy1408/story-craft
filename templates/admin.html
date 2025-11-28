@@ -60,4 +60,27 @@
         </table>
     </div>
 </div>
+<h2 class="mt-5 text-primary"><i class="bi bi-chat-left-quote-fill"></i> User Feedbacks</h2>
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 15%">User</th>
+                    <th>Message</th>
+                    <th style="width: 20%">Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fb in feedbacks %}
+                <tr>
+                    <td class="fw-bold">User ID: {{ fb.user_id }}</td>
+                    <td style="white-space: pre-wrap;">{{ fb.message }}</td>
+                    <td class="text-muted small">{{ fb.created_at }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" class="text-center py-3 text-muted">No feedbacks yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 {% endblock %}

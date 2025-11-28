@@ -7,3 +7,5 @@ python-dotenv
 requests
 gunicorn
 werkzeug
+PyPDF2
+python-docx

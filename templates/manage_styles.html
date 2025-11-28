@@ -1,42 +1,84 @@
 {% extends "base.html" %}
 
-{% block title %}Style Bank Management{% endblock %}
+{% block title %}Style Bank{% endblock %}
 
 {% block content %}
     <div class="content-card">
-        <h1>Style Bank Management</h1>
-        <p class="lead mb-4">Add, update, or delete your custom writing style samples.</p>
-
-        <div class="row g-5 mt-3">
-            <div class="col-md-7">
-                <h2>Add / Update Style</h2>
-                <form action="{{ url_for('add_style') }}" method="POST" class="mt-4">
-                    <div class="mb-3">
-                        <label for="style_name" class="form-label">Style Name:</label>
-                        <input type="text" id="style_name" name="style_name" class="form-control" placeholder="e.g., 'Hemingway'" required>
-                    </div>
-                    <div class="mb-4">
-                        <label for="style_content" class="form-label">Paste sample text here:</label>
-                        <textarea id="style_content" name="style_content" class="form-control" rows="12" required></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Save Style</button>
-                </form>
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
+            <div>
+                <h1 class="mb-2">Style Bank</h1>
+                <p class="text-muted mb-0">Manage your custom writing styles.</p>
             </div>
-            <div class="col-md-5">
-                <h2>Delete Style</h2>
-                <form action="{{ url_for('delete_style') }}" method="POST" class="mt-4">
-                    <p>Currently saved styles: <b>{{ styles | length }}</b></p>
-                    <div class="mb-3">
-                        <label for="style_to_delete" class="form-label">Select style to delete:</label>
-                        <select name="style_to_delete" id="style_to_delete" class="form-select">
-                            <option value="">-- Choose a style --</option>
-                            {% for style in styles %}
-                                <option value="{{ style.name }}">{{ style.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-danger w-100">Delete Selected Style</button>
-                </form>
+            <span class="badge bg-secondary mt-2 mt-md-0">{{ styles|length }} Styles Saved</span>
+        </div>
+
+        <div class="row g-4 mt-1">
+            
+            <div class="col-lg-7 col-12">
+                <div class="p-3 border rounded bg-light">
+                    <h4 class="mb-3 text-primary"><i class="bi bi-plus-circle"></i> Add New Style</h4>
+                    
+                    <form action="{{ url_for('add_style') }}" method="POST" enctype="multipart/form-data">
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Style Name:</label>
+                            <input type="text" name="style_name" class="form-control" placeholder="e.g., Funny Tone..." required>
+                        </div>
+
+                        <ul class="nav nav-tabs mb-2" id="styleTab" role="tablist">
+                            <li class="nav-item">
+                                <button class="nav-link active" id="text-tab" data-bs-toggle="tab" data-bs-target="#text-pane" type="button">Paste Text</button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" id="file-tab" data-bs-toggle="tab" data-bs-target="#file-pane" type="button">Upload File</button>
+                            </li>
+                        </ul>
+                        
+                        <div class="tab-content border border-top-0 p-3 bg-white rounded-bottom mb-3">
+                            <div class="tab-pane fade show active" id="text-pane">
+                                <textarea name="style_content" class="form-control" rows="8" placeholder="Paste sample text here..."></textarea>
+                            </div>
+                            
+                            <div class="tab-pane fade" id="file-pane">
+                                <div class="alert alert-info py-2 small">
+                                    <i class="bi bi-info-circle"></i> Supports <b>.pdf</b> & <b>.docx</b>
+                                </div>
+                                <input type="file" name="style_file" class="form-control" accept=".pdf,.docx">
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-save"></i> Save Style
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-lg-5 col-12">
+                <div class="p-3 border rounded border-danger bg-white">
+                    <h4 class="mb-3 text-danger"><i class="bi bi-trash"></i> Delete Style</h4>
+                    
+                    {% if styles %}
+                        <form action="{{ url_for('delete_style') }}" method="POST">
+                            <label class="form-label">Select style to remove:</label>
+                            <select name="style_to_delete" class="form-select mb-3">
+                                <option disabled selected>-- Choose --</option>
+                                {% for style in styles %}
+                                    <option value="{{ style.name }}">{{ style.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-outline-danger w-100">
+                                Delete Permanently
+                            </button>
+                        </form>
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-1"></i>
+                            <p>No styles yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
-    </div> {% endblock %}
+    </div> 
+{% endblock %}

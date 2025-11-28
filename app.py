@@ -4,11 +4,15 @@ import http.client
 import sys
 import webbrowser
 import uuid
+from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
+import PyPDF2
+import docx
 
 # --- 1. CẤU HÌNH BAN ĐẦU ---
 load_dotenv()
@@ -70,6 +74,18 @@ class Comic(db.Model):
     story_id = db.Column(db.Integer, db.ForeignKey('story.id'), nullable=False)
     panels_content = db.Column(db.Text, nullable=False)
 
+class Feedback(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.String(50), default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    
+    # --- SỬA DÒNG NÀY (Thêm lazy='joined') ---
+    # Dòng này giúp code tự động nối bảng User để lấy tên khi truy vấn Feedback
+    user = db.relationship('User', backref=db.backref('feedbacks', lazy=True))
+    
+# Nhớ thêm: from datetime import datetime vào đầu file app.py nhé!
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -81,6 +97,25 @@ def configure_ai():
         print("ERROR: GOOGLE_API_KEY is empty.")
         return None
     return api_key
+
+def extract_text_from_file(file):
+    text = ""
+    filename = file.filename.lower()
+    try:
+        if filename.endswith('.pdf'):
+            reader = PyPDF2.PdfReader(file)
+            for page in reader.pages:
+                text += page.extract_text() + "\n"
+        elif filename.endswith('.docx'):
+            doc = docx.Document(file)
+            for para in doc.paragraphs:
+                text += para.text + "\n"
+        else:
+            return None # Không hỗ trợ đuôi khác
+    except Exception as e:
+        print(f"Error reading file: {e}")
+        return None
+    return text
 
 # --- 4. GỌI AI (YESCALE WRAPPER) ---
 def generate_story_ai(api_key, prompt):
@@ -110,7 +145,7 @@ def generate_story_ai(api_key, prompt):
     except Exception as e:
         return f"ERROR: System error: {e}"
 
-# --- 5. PROMPTS CHUYÊN SÂU (Đã phục hồi đầy đủ) ---
+# --- 5. PROMPTS CHUYÊN SÂU ---
 CEFR_LEVEL_GUIDELINES = {
     "PRE A1": """- **Grammar:** Strict Pre-A1 (Present Simple, Be, Have, Imperatives). Avg 3-8 words/sentence. NO complex sentences.""",
     "A1": """- **Grammar:** Simple Present & Continuous, Can, Have got. Short dialogues. Avg 6-10 words/sentence.""",
@@ -236,17 +271,27 @@ def create_comic_script_prompt(story_content):
     }}
     """
 @app.route('/login', methods=['GET', 'POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        
+        admin_pin = request.form.get('admin_pin') # Lấy mã PIN
+
         user = User.query.filter_by(username=username).first()
         
-        # Kiểm tra xem có bị khóa không (Code Admin Pro)
+        # Check khóa
         if user and user.is_locked:
-            flash('This account has been LOCKED by Admin.', 'danger')
+            flash('Account LOCKED.', 'danger')
             return render_template('login.html')
+
+        # --- LOGIC BẢO MẬT ADMIN ---
+        if user and user.username == 'admin':
+            # Admin bắt buộc phải nhập đúng PIN (ví dụ PIN cứng là 8888)
+            if admin_pin != "25121509": 
+                flash('Admin Security PIN required or incorrect!', 'danger')
+                return render_template('login.html')
+        # ---------------------------
 
         if user and check_password_hash(user.password_hash, password):
             login_user(user)
@@ -477,8 +522,30 @@ def styles_page(): return render_template('manage_styles.html', styles=Style.que
 @app.route('/add-style', methods=['POST'])
 @login_required
 def add_style(): 
-    db.session.add(Style(name=request.form['style_name'], content=request.form['style_content']))
-    db.session.commit()
+    style_name = request.form['style_name']
+    style_content = request.form.get('style_content', '') # Lấy text nhập tay
+    
+    # Kiểm tra xem có file upload không
+    file = request.files.get('style_file')
+    if file and file.filename != '':
+        extracted_text = extract_text_from_file(file)
+        if extracted_text:
+            style_content = extracted_text # Ưu tiên lấy nội dung từ file
+        else:
+            flash("Error reading file. Please upload valid .pdf or .docx", "danger")
+            return redirect(url_for('styles_page'))
+
+    if not style_content.strip():
+        flash("Style content cannot be empty!", "warning")
+        return redirect(url_for('styles_page'))
+
+    try:
+        db.session.add(Style(name=style_name, content=style_content))
+        db.session.commit()
+        flash("Style added successfully!", "success")
+    except Exception:
+        flash("Style name already exists!", "danger")
+        
     return redirect(url_for('styles_page'))
 
 @app.route('/delete-style', methods=['POST'])
@@ -563,7 +630,15 @@ def add_quiz_to_saved():
         flash(f"Error creating quiz: {e}", "danger")
     return redirect(url_for('saved_stories_page'))
 
-
+@app.route('/send-feedback', methods=['POST'])
+@login_required
+def send_feedback():
+    msg = request.form.get('message')
+    if msg:
+        db.session.add(Feedback(user_id=current_user.id, message=msg))
+        db.session.commit()
+        flash("Feedback sent to Admin. Thank you!", "success")
+    return redirect(request.referrer) # Quay lại trang cũ
 
 # --- ADMIN DASHBOARD PRO ---
 @app.route('/admin/dashboard')
@@ -571,7 +646,8 @@ def add_quiz_to_saved():
 def admin_dashboard():
     if current_user.username != 'admin': return "Access Denied", 403
     users = User.query.all()
-    return render_template('admin.html', users=users)
+    feedbacks = Feedback.query.order_by(Feedback.id.desc()).all() # Lấy feedback mới nhất
+    return render_template('admin.html', users=users, feedbacks=feedbacks)
 
 # Chức năng 1: Reset mật khẩu về 123456
 @app.route('/admin/reset-pass/<int:user_id>', methods=['POST'])

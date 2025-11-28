@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Story Tool{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{% block title %}Story Weaver{% endblock %}</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -14,160 +14,142 @@
 
     <style>
         :root {
-            /* Palette: Vintage Storybook */
-            --bg-paper: #fdf6e3;       /* Màu kem nền giấy */
-            --sidebar-wood: #5d4037;   /* Nâu gỗ đậm */
-            --sidebar-text: #efebe9;   /* Trắng ngà */
-            --text-ink: #2c3e50;       /* Xanh mực đậm */
-            --primary-btn: #d35400;    /* Cam đất */
-            --primary-hover: #a04000;  
-            --accent-gold: #f1c40f;    /* Vàng điểm nhấn */
-            --card-bg: #ffffff;        /* Trắng cho thẻ */
-            --input-bg: #fafafa;
+            --bg-paper: #fdf6e3; --sidebar-wood: #5d4037; --sidebar-text: #efebe9;
+            --text-ink: #2c3e50; --primary-btn: #d35400; --primary-hover: #a04000;
+            --accent-gold: #f1c40f; --card-bg: #ffffff; --input-bg: #fafafa;
+        }
+
+        /* Khóa scroll ngang toàn trang */
+        html, body { 
+            max-width: 100%; overflow-x: hidden; 
         }
 
         body { 
-            display: flex; 
-            font-family: 'Quicksand', sans-serif; 
-            background-color: var(--bg-paper); 
-            color: var(--text-ink);
-            font-size: 16px; 
-            min-height: 100vh;
+            display: flex; font-family: 'Quicksand', sans-serif; 
+            background-color: var(--bg-paper); color: var(--text-ink); 
+            min-height: 100vh; margin: 0;
         }
 
-        /* --- SIDEBAR (Gáy Sách) --- */
+        /* --- SIDEBAR (Desktop) --- */
         nav { 
-            width: 260px; 
-            background: var(--sidebar-wood); 
-            color: var(--sidebar-text); 
-            padding: 30px 20px; 
-            flex-shrink: 0; 
-            display: flex; 
-            flex-direction: column;
-            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
-            border-right: 5px solid #3e2723; /* Tạo cảm giác độ dày bìa sách */
+            width: 260px; background: var(--sidebar-wood); color: var(--sidebar-text); 
+            padding: 30px 20px; flex-shrink: 0; display: flex; flex-direction: column;
+            border-right: 5px solid #3e2723; height: 100vh; position: sticky; top: 0; overflow-y: auto;
+            z-index: 1000;
         }
         
         nav h2 { 
-            margin-top: 0; 
-            font-family: 'Playfair Display', serif; 
-            font-weight: 700; 
-            font-size: 1.8rem; 
-            color: var(--accent-gold);
-            margin-bottom: 40px;
-            text-align: center;
-            border-bottom: 1px dashed rgba(255,255,255,0.2);
-            padding-bottom: 20px;
+            font-family: 'Playfair Display', serif; font-weight: 700; font-size: 1.8rem; 
+            color: var(--accent-gold); text-align: center;
         }
 
         nav a { 
-            color: var(--sidebar-text); 
-            text-decoration: none; 
-            display: block; 
-            padding: 12px 15px; 
-            font-size: 1.1rem; 
-            border-radius: 8px;
-            margin-bottom: 8px;
-            transition: all 0.2s ease;
-            font-weight: 500;
+            color: var(--sidebar-text); text-decoration: none; display: block; 
+            padding: 12px 15px; font-size: 1.1rem; border-radius: 8px; margin-bottom: 8px;
+            transition: all 0.2s ease; font-weight: 500; width: 100%;
         }
         
         nav a:hover, nav a.active { 
-            background-color: rgba(255,255,255,0.1); 
-            color: var(--accent-gold); 
-            transform: translateX(5px); /* Hiệu ứng đẩy nhẹ */
+            background-color: rgba(255,255,255,0.1); color: var(--accent-gold); transform: translateX(5px);
         }
         
         nav i { margin-right: 10px; width: 20px; text-align: center; }
 
+        .footer-quote {
+            padding-top: 20px; border-top: 1px dashed rgba(255,255,255,0.2); 
+            font-size: 0.85em; color: #bcaaa4; font-style: italic; margin-top: 20px; text-align: center;
+        }
+
         /* --- MAIN CONTAINER --- */
         .main-container { 
-            flex-grow: 1; 
-            padding: 40px; 
-            background-image: radial-gradient(#d7ccc8 1px, transparent 1px); /* Chấm bi mờ tạo texture giấy */
-            background-size: 20px 20px;
-            overflow-y: auto;
+            flex-grow: 1; padding: 40px; width: 100%; overflow-x: hidden;
+            background-image: radial-gradient(#d7ccc8 1px, transparent 1px); background-size: 20px 20px;
         }
 
-        /* --- TYPOGRAPHY --- */
-        h1, h2, h3, h4 { 
-            font-family: 'Playfair Display', serif; 
-            color: var(--text-ink); 
-        }
-        h1 { font-weight: 700; font-size: 2.5rem; margin-bottom: 10px; }
-        h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.2rem; color: #d35400; border-left: 4px solid #d35400; padding-left: 10px; }
-        .lead { font-size: 1.15rem; color: #555; font-style: italic; }
+        /* --- UI COMPONENTS --- */
+        .content-card { background: var(--card-bg); padding: 40px; border-radius: 16px; box-shadow: 0 8px 20px rgba(93,64,55,0.08); margin: 0 auto; max-width: 1100px; border: 1px solid rgba(0,0,0,0.05); }
+        .form-control, .form-select { border-radius: 12px; padding: 12px; border: 2px solid #e0e0e0; background-color: var(--input-bg); }
+        .form-control:focus { border-color: var(--primary-btn); box-shadow: 0 0 0 0.2rem rgba(211,84,0,0.15); }
+        .btn-primary { background: var(--primary-btn); border-color: var(--primary-btn); }
+        .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+        h1 { font-family: 'Playfair Display', serif; font-weight: 700; color: var(--sidebar-wood); margin-bottom: 20px; }
 
-        /* --- FORMS & INPUTS --- */
-        .form-label { font-weight: 600; color: #4e342e; margin-bottom: 0.5rem; }
-        .form-control, .form-select { 
-            background-color: var(--input-bg);
-            border: 2px solid #e0e0e0;
-            border-radius: 12px; /* Bo tròn nhiều hơn */
-            padding: 12px 15px;
-            font-size: 1rem;
-            transition: border-color 0.2s;
-        }
-        .form-control:focus, .form-select:focus {
-            border-color: var(--primary-btn);
-            box-shadow: 0 0 0 0.2rem rgba(211, 84, 0, 0.15);
-            background-color: #fff;
+        /* Nút Feedback nổi */
+        .floating-btn {
+            position: fixed; bottom: 30px; right: 30px;
+            width: 60px; height: 60px; font-size: 24px;
+            z-index: 9999; display: flex; align-items: center; justify-content: center;
         }
 
-        /* --- BUTTONS --- */
-        .btn { border-radius: 10px; padding: 10px 20px; font-weight: 600; letter-spacing: 0.5px; transition: all 0.2s; }
-        .btn-primary { 
-            background-color: var(--primary-btn); 
-            border-color: var(--primary-btn); 
-            box-shadow: 0 4px 6px rgba(211, 84, 0, 0.2);
-        }
-        .btn-primary:hover { 
-            background-color: var(--primary-hover); 
-            border-color: var(--primary-hover); 
-            transform: translateY(-2px);
-        }
-        
-        /* --- CARDS --- */
-        .content-card { 
-            background-color: var(--card-bg); 
-            padding: 40px; 
-            border-radius: 16px; 
-            box-shadow: 0 8px 20px rgba(93, 64, 55, 0.08); /* Bóng mờ nhẹ màu nâu */
-            max-width: 1100px;
-            margin: 0 auto; /* Căn giữa card */
-            border: 1px solid rgba(0,0,0,0.05);
-        }
+        /* =========================================
+           📱 MOBILE RESPONSIVE (DƯỚI 992px)
+           ========================================= */
+        @media (max-width: 992px) {
+            body { flex-direction: column; }
 
-        .toast-container { z-index: 1100; }
+            /* Header Ngang */
+            nav { 
+                width: 100% !important; height: auto !important; padding: 10px 20px;
+                border-right: none; border-bottom: 5px solid #3e2723;
+                position: relative; 
+            }
+
+            .mobile-header { display: flex; justify-content: space-between; align-items: center; }
+            nav h2 { margin-bottom: 0; font-size: 1.5rem; text-align: left; padding-bottom: 0; border: none; }
+
+            #sidebarMenu { background: rgba(0,0,0,0.1); margin: 0 -20px; padding: 20px; }
+            nav a:hover { transform: none; background-color: rgba(255,255,255,0.2); }
+            
+            .main-container { padding: 15px; }
+            .content-card { padding: 20px; }
+            .floating-btn { width: 50px; height: 50px; font-size: 20px; bottom: 20px; right: 15px; }
+            .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+            /* FIX LỖI ZOOM: Ép font size input to lên để không bị zoom */
+            input, select, textarea { font-size: 16px !important; }
+        }
     </style>
     {% block styles %}{% endblock %}
 </head>
 <body>
-    <nav>
-        <h2><i class="bi bi-book-half"></i> Story Craft</h2>
-        
-        {% if current_user.is_authenticated %}
-            <div class="mb-4 text-center" style="color: #f1c40f;">
-                <i class="bi bi-person-circle"></i> {{ current_user.username }}
-            </div>
-        {% if current_user.username == 'admin' %}
-                <a href="{{ url_for('admin_dashboard') }}" style="color: #e74c3c; font-weight: bold; border: 2px dashed #e74c3c; margin-bottom: 15px;">
-                    <i class="bi bi-shield-lock-fill"></i> Admin Panel
-                </a>
-            {% endif %}
+    <nav class="navbar">
+        <div class="container-fluid flex-lg-column align-items-lg-stretch p-0">
             
-            <a href="{{ url_for('index') }}"><i class="bi bi-feather"></i> Write Story</a>
-            <a href="{{ url_for('styles_page') }}"><i class="bi bi-pen-fill"></i> Style Bank</a>
-            <a href="{{ url_for('saved_stories_page') }}"><i class="bi bi-collection-fill"></i> Library</a>
-            <a href="{{ url_for('translate_page') }}"><i class="bi bi-translate"></i> Folktales</a> 
-            <a href="{{ url_for('logout') }}" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="bi bi-box-arrow-right"></i> Logout</a>
-        {% else %}
-            <a href="{{ url_for('login') }}" class="active"><i class="bi bi-key-fill"></i> Login</a>
-            <a href="{{ url_for('register') }}"><i class="bi bi-person-plus-fill"></i> Register</a>
-        {% endif %}
-        
-        <div style="padding-top: 20px; border-top: 1px dashed rgba(255,255,255,0.2); font-size: 0.85em; color: #bcaaa4; font-style: italic; margin-top: 20px;">
-            "Every story lives in the heart of a child."
+            <div class="d-flex justify-content-between align-items-center w-100 mobile-header">
+                <h2 class="mb-0"><i class="bi bi-book-half"></i> Story Weaver</h2>
+                
+                <button class="navbar-toggler border-0 text-warning" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu">
+                    <i class="bi bi-list" style="font-size: 2rem; color: var(--primary-btn);"></i>
+                </button>
+            </div>
+
+            <div class="collapse navbar-collapse flex-column mt-3 mt-lg-0" id="sidebarMenu">
+                
+                {% if current_user.is_authenticated %}
+                    <div class="mb-4 text-center" style="color: #f1c40f; margin-top: 20px;">
+                        <i class="bi bi-person-circle"></i> {{ current_user.username }}
+                    </div>
+                    
+                    {% if current_user.username == 'admin' %}
+                        <a href="{{ url_for('admin_dashboard') }}" style="color: #e74c3c; font-weight: bold; border: 2px dashed #e74c3c; margin-bottom: 15px;">
+                            <i class="bi bi-shield-lock-fill"></i> Admin Panel
+                        </a>
+                    {% endif %}
+                
+                    <a href="{{ url_for('index') }}"><i class="bi bi-feather"></i> Write Story</a>
+                    <a href="{{ url_for('styles_page') }}"><i class="bi bi-pen-fill"></i> Style Bank</a>
+                    <a href="{{ url_for('saved_stories_page') }}"><i class="bi bi-collection-fill"></i> Library</a>
+                    <a href="{{ url_for('translate_page') }}"><i class="bi bi-translate"></i> Folktales</a> 
+                    <a href="{{ url_for('logout') }}" style="margin-top: auto; background: rgba(0,0,0,0.2);"><i class="bi bi-box-arrow-right"></i> Logout</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="active mt-3"><i class="bi bi-key-fill"></i> Login</a>
+                    <a href="{{ url_for('register') }}"><i class="bi bi-person-plus-fill"></i> Register</a>
+                {% endif %}
+
+                <div class="footer-quote">
+                    "Every story lives in the heart of a child."
+                </div>
+            </div>
         </div>
     </nav>
 
@@ -190,13 +172,51 @@
         {% block content %}{% endblock %}
     </div> 
 
+    {% if current_user.is_authenticated %}
+        <button type="button" class="btn btn-warning rounded-circle shadow floating-btn" data-bs-toggle="modal" data-bs-target="#feedbackModal">
+            <i class="bi bi-chat-dots-fill text-white"></i>
+        </button>
+
+        <div class="modal fade" id="feedbackModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-warning">
+                        <h5 class="modal-title text-white">Help & Support</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="{{ url_for('send_feedback') }}" method="POST">
+                        <div class="modal-body">
+                            <p>Gặp lỗi hay có ý tưởng gì mới? Nhắn cho Admin nhé!</p>
+                            <textarea name="message" class="form-control" rows="5" required placeholder="Mô tả vấn đề của bạn..."></textarea>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                            <button type="submit" class="btn btn-primary">Gửi đi</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
     <script>
+        const navLinks = document.querySelectorAll('.navbar-collapse a');
+        const menuToggle = document.getElementById('sidebarMenu');
+        const bsCollapse = new bootstrap.Collapse(menuToggle, {toggle: false});
+
+        navLinks.forEach((l) => {
+            l.addEventListener('click', () => {
+                if (menuToggle.classList.contains('show')) {
+                    bsCollapse.hide();
+                }
+            });
+        });
+
         const toastElList = document.querySelectorAll('.toast');
         const toastList = [...toastElList].map(toastEl => new bootstrap.Toast(toastEl, { delay: 5000 }));
         toastList.forEach(toast => toast.show());
     </script>
-    {% block scripts %}{% endblock %}
 </body>
-
 </html>

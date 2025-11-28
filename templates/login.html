@@ -8,9 +8,26 @@
             
             <form method="POST">
                 <div class="mb-3 text-start">
-                    <label>Username</label>
-                    <input type="text" name="username" class="form-control" required>
-                </div>
+    <label>Username</label>
+    <input type="text" name="username" id="usernameInput" class="form-control" oninput="checkAdmin()" required>
+</div>
+
+<div class="mb-3 text-start" id="adminPinBox" style="display:none;">
+    <label class="text-danger fw-bold"><i class="bi bi-shield-lock"></i> Admin Security PIN</label>
+    <input type="password" name="admin_pin" class="form-control" placeholder="****">
+</div>
+
+<script>
+function checkAdmin() {
+    let user = document.getElementById('usernameInput').value;
+    // Nếu username là 'admin' (không phân biệt hoa thường) thì hiện ô PIN
+    if (user.toLowerCase() === 'admin') {
+        document.getElementById('adminPinBox').style.display = 'block';
+    } else {
+        document.getElementById('adminPinBox').style.display = 'none';
+    }
+}
+</script>
                 <div class="mb-4 text-start">
                     <label>Password</label>
                     <input type="password" name="password" class="form-control" required>
