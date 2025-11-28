@@ -7,9 +7,6 @@
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
@@ -19,51 +16,81 @@
             --accent-gold: #f1c40f; --card-bg: #ffffff; --input-bg: #fafafa;
         }
 
-        /* Khóa scroll ngang toàn trang */
-        html, body { 
-            max-width: 100%; overflow-x: hidden; 
+        /* Reset trang */
+        html, body {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            overflow-x: hidden; /* Chặn cuộn ngang */
         }
 
         body { 
-            display: flex; font-family: 'Quicksand', sans-serif; 
-            background-color: var(--bg-paper); color: var(--text-ink); 
-            min-height: 100vh; margin: 0;
+            /* QUAN TRỌNG: Xóa display: flex đi, dùng block mặc định */
+            display: block; 
+            font-family: 'Quicksand', sans-serif; 
+            background-color: var(--bg-paper); 
+            color: var(--text-ink); 
         }
 
-        /* --- SIDEBAR (Desktop) --- */
+        /* --- 1. SIDEBAR (MÁY TÍNH) --- */
         nav { 
-            width: 260px; background: var(--sidebar-wood); color: var(--sidebar-text); 
-            padding: 30px 20px; flex-shrink: 0; display: flex; flex-direction: column;
-            border-right: 5px solid #3e2723; height: 100vh; position: sticky; top: 0; overflow-y: auto;
-            z-index: 1000;
-        }
-        
+    /* Ghim cố định bên trái */
+    position: fixed; 
+    top: 0; left: 0; 
+    /* bottom: 0; -> Xóa hoặc giữ đều được, nhưng dòng dưới quan trọng hơn */
+    height: 100vh; /* THÊM DÒNG NÀY: Ép chiều cao bằng 100% màn hình */
+    width: 260px; 
+    
+    background: var(--sidebar-wood); 
+    color: var(--sidebar-text); 
+    padding: 30px 20px; 
+    
+    overflow-y: auto; 
+    z-index: 1000;
+    border-right: 5px solid #3e2723;
+    
+    /* Dàn nội dung bên trong Sidebar */
+    display: flex; flex-direction: column;
+}
+
+        /* Ẩn nút 3 gạch trên Desktop */
+        .navbar-toggler { display: none !important; }
+        .navbar-collapse { display: block !important; } 
+        .mobile-header { text-align: center; margin-bottom: 20px; }
+
         nav h2 { 
             font-family: 'Playfair Display', serif; font-weight: 700; font-size: 1.8rem; 
-            color: var(--accent-gold); text-align: center;
+            color: var(--accent-gold); margin: 0;
         }
 
         nav a { 
             color: var(--sidebar-text); text-decoration: none; display: block; 
             padding: 12px 15px; font-size: 1.1rem; border-radius: 8px; margin-bottom: 8px;
-            transition: all 0.2s ease; font-weight: 500; width: 100%;
+            transition: all 0.2s ease; font-weight: 500; text-align: left;
         }
         
         nav a:hover, nav a.active { 
             background-color: rgba(255,255,255,0.1); color: var(--accent-gold); transform: translateX(5px);
         }
         
-        nav i { margin-right: 10px; width: 20px; text-align: center; }
+        nav i { margin-right: 12px; width: 25px; text-align: center; display: inline-block; }
 
         .footer-quote {
-            padding-top: 20px; border-top: 1px dashed rgba(255,255,255,0.2); 
-            font-size: 0.85em; color: #bcaaa4; font-style: italic; margin-top: 20px; text-align: center;
+            margin-top: auto; padding-top: 20px; border-top: 1px dashed rgba(255,255,255,0.2); 
+            font-size: 0.85em; color: #bcaaa4; font-style: italic; text-align: center;
         }
 
-        /* --- MAIN CONTAINER --- */
+        /* --- 2. NỘI DUNG CHÍNH (ĐẨY SANG PHẢI) --- */
         .main-container { 
-            flex-grow: 1; padding: 40px; width: 100%; overflow-x: hidden;
-            background-image: radial-gradient(#d7ccc8 1px, transparent 1px); background-size: 20px 20px;
+            /* Cách lề trái 260px để nhường chỗ cho Sidebar */
+            margin-left: 260px; 
+            padding: 40px; 
+            
+            /* Đảm bảo chiều cao tối thiểu */
+            min-height: 100vh;
+            box-sizing: border-box; /* Tính cả padding vào độ rộng */
+            
+            background-image: radial-gradient(#d7ccc8 1px, transparent 1px); 
+            background-size: 20px 20px;
         }
 
         /* --- UI COMPONENTS --- */
@@ -74,48 +101,57 @@
         .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
         h1 { font-family: 'Playfair Display', serif; font-weight: 700; color: var(--sidebar-wood); margin-bottom: 20px; }
 
-        /* Nút Feedback nổi */
         .floating-btn {
-            position: fixed; bottom: 30px; right: 30px;
-            width: 60px; height: 60px; font-size: 24px;
+            position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; font-size: 24px;
             z-index: 9999; display: flex; align-items: center; justify-content: center;
         }
 
         /* =========================================
-           📱 MOBILE RESPONSIVE (DƯỚI 992px)
+           📱 GIAO DIỆN MOBILE (DƯỚI 992px)
            ========================================= */
         @media (max-width: 992px) {
-            body { flex-direction: column; }
-
-            /* Header Ngang */
+            /* Reset lại Sidebar thành Header */
             nav { 
-                width: 100% !important; height: auto !important; padding: 10px 20px;
+                position: relative; /* Hủy chế độ ghim */
+                width: 100%; height: auto; padding: 10px 20px;
                 border-right: none; border-bottom: 5px solid #3e2723;
-                position: relative; 
+                z-index: 1001;
             }
 
-            .mobile-header { display: flex; justify-content: space-between; align-items: center; }
-            nav h2 { margin-bottom: 0; font-size: 1.5rem; text-align: left; padding-bottom: 0; border: none; }
+            /* Reset lại Nội dung chính */
+            .main-container { 
+                margin-left: 0; /* Hủy lề trái */
+                padding: 15px; 
+            }
+
+            /* Header Mobile */
+            .mobile-header { 
+                display: flex; justify-content: space-between; align-items: center; 
+                margin-bottom: 0; text-align: left; 
+            }
+            nav h2 { font-size: 1.5rem; }
+
+            /* Hiện nút bấm */
+            .navbar-toggler { display: block !important; }
+            .navbar-collapse { display: none !important; margin-top: 15px; } 
+            .navbar-collapse.show { display: flex !important; flex-direction: column; }
 
             #sidebarMenu { background: rgba(0,0,0,0.1); margin: 0 -20px; padding: 20px; }
             nav a:hover { transform: none; background-color: rgba(255,255,255,0.2); }
             
-            .main-container { padding: 15px; }
             .content-card { padding: 20px; }
             .floating-btn { width: 50px; height: 50px; font-size: 20px; bottom: 20px; right: 15px; }
             .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-
-            /* FIX LỖI ZOOM: Ép font size input to lên để không bị zoom */
             input, select, textarea { font-size: 16px !important; }
         }
     </style>
     {% block styles %}{% endblock %}
 </head>
 <body>
-    <nav class="navbar">
+    <nav>
         <div class="container-fluid flex-lg-column align-items-lg-stretch p-0">
             
-            <div class="d-flex justify-content-between align-items-center w-100 mobile-header">
+            <div class="d-flex align-items-center mobile-header">
                 <h2 class="mb-0"><i class="bi bi-book-half"></i> Story Weaver</h2>
                 
                 <button class="navbar-toggler border-0 text-warning" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu">
@@ -123,7 +159,7 @@
                 </button>
             </div>
 
-            <div class="collapse navbar-collapse flex-column mt-3 mt-lg-0" id="sidebarMenu">
+            <div class="collapse navbar-collapse flex-column" id="sidebarMenu">
                 
                 {% if current_user.is_authenticated %}
                     <div class="mb-4 text-center" style="color: #f1c40f; margin-top: 20px;">
