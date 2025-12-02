@@ -75,7 +75,7 @@
         .quiz-select { border: 1px solid #b2dfdb; background: white; border-radius: 6px; font-size: 0.9rem; padding: 4px 8px; color: #00695c; }
         .btn-v-quiz { background-color: #26a69a; color: white; border-radius: 6px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; padding: 0; }
 
-        /* --- READER VIEW (ĐÃ SỬA LỖI DÍNH CHỮ TẠI ĐÂY) --- */
+        /* --- READER VIEW --- */
         .story-reader-view {
             font-family: 'Georgia', serif;
             font-size: 1.15rem; 
@@ -83,11 +83,7 @@
             color: #2c3e50;
             border-left: 4px solid #d35400;
             padding-left: 25px;
-            
-            /* QUAN TRỌNG: Giữ nguyên định dạng xuống dòng */
             white-space: pre-wrap; 
-            
-            /* Ngắt từ nếu từ quá dài để tránh tràn màn hình */
             word-wrap: break-word; 
         }
         
@@ -129,6 +125,9 @@
                                 
                                 <div class="action-toolbar">
                                     <a href="{{ url_for('edit_story_page', story_id=story.id) }}" class="btn btn-v btn-v-secondary" title="Edit Text"><i class="bi bi-pencil"></i> Edit</a>
+                                    
+                                    <a href="{{ url_for('reuse_prompt', story_id=story.id) }}" class="btn btn-v btn-v-secondary" title="Reuse Prompt"><i class="bi bi-arrow-repeat"></i> Remix</a>
+
                                     <button type="button" class="btn btn-v btn-v-secondary" onclick="copyStoryContent('{{ story.id }}', this)" title="Copy to Clipboard"><i class="bi bi-clipboard"></i> Copy</button>
                                     
                                     {% if '--- PAGE' in story.content %}

@@ -10,10 +10,17 @@
                     <label>Choose Username</label>
                     <input type="text" name="username" class="form-control" required>
                 </div>
+                
                 <div class="mb-4 text-start">
                     <label>Create Password</label>
-                    <input type="password" name="password" class="form-control" required>
+                    <div class="input-group">
+                        <input type="password" name="password" id="regPassInput" class="form-control" required style="border-right: 0;">
+                        <span class="input-group-text bg-white" style="cursor: pointer; border-left: 0;" onclick="toggleRegPassword()">
+                            <i class="bi bi-eye-slash" id="regToggleIcon"></i>
+                        </span>
+                    </div>
                 </div>
+
                 <div class="mb-4 text-start">
                     <label>Registration Code (Ask Admin)</label>
                     <input type="text" name="secret_code" class="form-control" placeholder="Enter the secret code..." required>
@@ -24,4 +31,16 @@
         </div>
     </div>
 </div>
+
+<script>
+function toggleRegPassword() {
+    const p = document.getElementById('regPassInput');
+    const i = document.getElementById('regToggleIcon');
+    if (p.type === 'password') {
+        p.type = 'text'; i.classList.remove('bi-eye-slash'); i.classList.add('bi-eye');
+    } else {
+        p.type = 'password'; i.classList.remove('bi-eye'); i.classList.add('bi-eye-slash');
+    }
+}
+</script>
 {% endblock %}

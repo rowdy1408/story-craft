@@ -4,6 +4,7 @@ import http.client
 import sys
 import webbrowser
 import uuid
+import re  # <--- MỚI: Dùng để xử lý Regex cho JSON
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash
 from flask_sqlalchemy import SQLAlchemy
@@ -18,7 +19,7 @@ import docx
 load_dotenv() # Load biến môi trường từ file .env
 
 app = Flask(__name__)
-# Lấy Secret Key từ file .env, nếu không có thì dùng key tạm (nhưng nên có trong .env)
+# Lấy Secret Key từ file .env, nếu không có thì dùng key tạm
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default_secret_key_change_me')
 
 # Đường dẫn DB
@@ -66,6 +67,8 @@ class Story(db.Model):
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    # --- MỚI: Cột lưu trữ dữ liệu inputs để reuse sau này ---
+    prompt_data = db.Column(db.Text, nullable=True) 
     comics = db.relationship('Comic', backref='story', lazy=True)
 
 class Comic(db.Model):
@@ -408,7 +411,29 @@ def reset_password():
 
     return render_template('reset_password.html')
 
-# --- COMIC ROUTES (FIXED JSON LOGIC) ---
+# --- MỚI: ROUTE REUSE PROMPT ---
+@app.route('/reuse-prompt/<int:story_id>')
+@login_required
+def reuse_prompt(story_id):
+    story = Story.query.get_or_404(story_id)
+    # Bảo mật: Chỉ chủ nhân mới xem được
+    if story.user_id != current_user.id:
+        flash("You do not have permission.", "danger")
+        return redirect(url_for('saved_stories_page'))
+    
+    # Load lại inputs cũ từ DB (nếu có)
+    prev_inputs = {}
+    if story.prompt_data:
+        try:
+            prev_inputs = json.loads(story.prompt_data)
+        except Exception as e:
+            print(f"Error parsing prompt_data: {e}")
+            prev_inputs = {}
+            
+    # Render trang index và nạp sẵn dữ liệu cũ
+    return render_template('index.html', all_styles=Style.query.all(), previous_inputs=prev_inputs, user=current_user)
+
+# --- COMIC ROUTES (CẢI TIẾN AI RELIABILITY) ---
 @app.route('/create-comic/<int:story_id>', methods=['POST'])
 @login_required
 def create_comic_direct(story_id):
@@ -423,25 +448,29 @@ def create_comic_direct(story_id):
         prompt = create_comic_script_prompt(story.content)
         script_json_str = generate_story_ai(api_key, prompt)
         
-        # --- FIX: XỬ LÝ JSON AN TOÀN HƠN ---
-        clean_json = script_json_str
-        # Nếu AI trả về trong block code markdown, lọc nó ra
-        if "```json" in clean_json:
-            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-        elif "```" in clean_json:
-            clean_json = clean_json.split("```")[1].split("```")[0].strip()
+        # --- FIX MẠNH MẼ: DÙNG REGEX TÌM JSON (Feature #1) ---
+        print(f"DEBUG AI RAW OUTPUT: {script_json_str}") 
+
+        # Tìm chuỗi bắt đầu bằng '{' và kết thúc bằng '}' (bao gồm cả xuống dòng)
+        match = re.search(r'\{.*\}', script_json_str, re.DOTALL)
         
-        # Fallback: Tìm dấu { đầu tiên và } cuối cùng để cắt chuỗi rác
-        start_idx = clean_json.find('{')
-        end_idx = clean_json.rfind('}') + 1
-        if start_idx != -1 and end_idx != -1:
-            clean_json = clean_json[start_idx:end_idx]
+        if match:
+            clean_json = match.group()
+        else:
+            # Trường hợp AI không trả về JSON hoặc format quá lạ
+            return jsonify({"error": "AI did not return valid JSON. Please try again."}), 500
 
         try:
             data = json.loads(clean_json)
         except json.JSONDecodeError as e:
-            print(f"JSON Parsing Error: {e} | Raw: {script_json_str}")
-            return jsonify({"error": "AI returned invalid JSON format. Please try again."}), 500
+            # Cố gắng fix lỗi phổ biến: dấu phẩy thừa ở cuối list/object
+            try:
+                # Dùng regex xóa dấu phẩy trước dấu đóng ] hoặc }
+                clean_json = re.sub(r',\s*([\]}])', r'\1', clean_json)
+                data = json.loads(clean_json)
+            except:
+                print(f"JSON Parsing Error: {e} | Content: {clean_json}")
+                return jsonify({"error": "AI returned broken JSON syntax."}), 500
         # -----------------------------------
 
         if 'panels' in data:
@@ -565,11 +594,15 @@ def saved_stories_page():
 @login_required
 def handle_save_story():
     content = request.form.get('story_content', '')
+    # --- MỚI: Lấy prompt_data từ form hidden ---
+    prompt_data_str = request.form.get('prompt_data_json', '{}') 
+    
     title = "Untitled"
     first_line = content.strip().split('\n')[0]
     if "#" in first_line: title = first_line.replace('#', '').strip()
     
-    new_story = Story(title=title, content=content, user_id=current_user.id)
+    # Lưu vào database kèm prompt_data
+    new_story = Story(title=title, content=content, user_id=current_user.id, prompt_data=prompt_data_str)
     db.session.add(new_story)
     db.session.commit()
     return redirect(url_for('saved_stories_page'))

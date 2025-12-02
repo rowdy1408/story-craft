@@ -7,7 +7,7 @@
         /* MÀN HÌNH LOADING */
         #loading-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(93, 64, 55, 0.9); /* Màu nâu cafe sữa đậm */
+            background: rgba(93, 64, 55, 0.9);
             color: #fff;
             display: none; justify-content: center; align-items: center;
             z-index: 9999; flex-direction: column;
@@ -69,22 +69,22 @@
                 <div class="row g-4">
                     <div class="col-12">
                         <label class="form-label">1. Story Idea / Plot:</label>
-                        <textarea name="idea" class="form-control" rows="3" placeholder="e.g., A boy gets lost in a storm and finds courage..." required></textarea>
+                        <textarea name="idea" class="form-control" rows="3" placeholder="e.g., A boy gets lost in a storm and finds courage..." required>{{ previous_inputs.get('idea', '') }}</textarea>
                     </div>
                     
                     <div class="col-md-6">
                         <label class="form-label">2. Target Audience:</label>
                         <select name="target_audience" class="form-select">
-                            <option value="Children" selected>👶 Children (Storybook Mode)</option>
-                            <option value="Teenagers">🎒 Teenagers (High School)</option>
-                            <option value="Adults (General)">🏠 Adults - General Life</option>
-                            <option value="Adults (Office/Business)">💼 Adults - Business/Office</option>
+                            <option value="Children" {% if previous_inputs.get('target_audience') == 'Children' %}selected{% endif %}>👶 Children (Storybook Mode)</option>
+                            <option value="Teenagers" {% if previous_inputs.get('target_audience') == 'Teenagers' %}selected{% endif %}>🎒 Teenagers (High School)</option>
+                            <option value="Adults (General)" {% if previous_inputs.get('target_audience') == 'Adults (General)' %}selected{% endif %}>🏠 Adults - General Life</option>
+                            <option value="Adults (Office/Business)" {% if previous_inputs.get('target_audience') == 'Adults (Office/Business)' %}selected{% endif %}>💼 Adults - Business/Office</option>
                         </select>
                     </div>
 
                     <div class="col-md-6">
                         <label class="form-label">3. Main Character:</label>
-                        <input type="text" name="main_char" class="form-control" placeholder="e.g., 'Lan, 8yo girl'" required>
+                        <input type="text" name="main_char" class="form-control" placeholder="e.g., 'Lan, 8yo girl'" value="{{ previous_inputs.get('main_char', '') }}" required>
                     </div>
                 </div>
             </div>
@@ -99,34 +99,34 @@
                     <div class="col-md-6">
                         <label class="form-label">4. CEFR Level:</label>
                         <select name="cefr_level" class="form-select">
-                            <option value="Pre A1">Pre A1 (Beginner)</option>
-                            <option value="A1">A1 (Elementary)</option>
-                            <option value="A2">A2 (Pre-Intermediate)</option>
-                            <option value="B1" selected>B1 (Intermediate)</option>
-                            <option value="B2">B2 (Upper Intermediate)</option>
-                            <option value="C1">C1 (Advanced)</option>
-                            <option value="C2">C2 (Proficiency)</option>
+                            <option value="Pre A1" {% if previous_inputs.get('cefr_level') == 'Pre A1' %}selected{% endif %}>Pre A1 (Beginner)</option>
+                            <option value="A1" {% if previous_inputs.get('cefr_level') == 'A1' %}selected{% endif %}>A1 (Elementary)</option>
+                            <option value="A2" {% if previous_inputs.get('cefr_level') == 'A2' %}selected{% endif %}>A2 (Pre-Intermediate)</option>
+                            <option value="B1" {% if previous_inputs.get('cefr_level') == 'B1' or not previous_inputs %}selected{% endif %}>B1 (Intermediate)</option>
+                            <option value="B2" {% if previous_inputs.get('cefr_level') == 'B2' %}selected{% endif %}>B2 (Upper Intermediate)</option>
+                            <option value="C1" {% if previous_inputs.get('cefr_level') == 'C1' %}selected{% endif %}>C1 (Advanced)</option>
+                            <option value="C2" {% if previous_inputs.get('cefr_level') == 'C2' %}selected{% endif %}>C2 (Proficiency)</option>
                         </select>
                     </div>
 
                     <div class="col-md-6">
                         <label class="form-label">5. Word Count:</label>
-                        <input type="number" name="word_count" class="form-control" value="250" min="50" required>
+                        <input type="number" name="word_count" class="form-control" value="{{ previous_inputs.get('word_count', '250') }}" min="50" required>
                     </div>
 
                     <div class="col-12">
                         <label class="form-label">6. Required Vocabulary:</label>
-                        <input type="text" name="vocab_str" class="form-control" placeholder="run, storm, scared, brave..." required>
+                        <input type="text" name="vocab_str" class="form-control" placeholder="run, storm, scared, brave..." value="{{ previous_inputs.get('vocab_str', '') }}" required>
                     </div>
 
                     <div class="col-md-6">
                         <label class="form-label">7. Theme:</label>
-                        <input type="text" name="theme" class="form-control" placeholder="e.g., friendship, courage..." required>
+                        <input type="text" name="theme" class="form-control" placeholder="e.g., friendship, courage..." value="{{ previous_inputs.get('theme', '') }}" required>
                     </div>
 
                     <div class="col-md-6">
                         <label class="form-label">8. Setting:</label>
-                        <input type="text" name="setting" class="form-control" placeholder="Hanoi Old Quarter...">
+                        <input type="text" name="setting" class="form-control" placeholder="Hanoi Old Quarter..." value="{{ previous_inputs.get('setting', '') }}">
                     </div>
                 </div>
             </div>
@@ -140,23 +140,23 @@
                 <div class="row g-4">
                     <div class="col-md-6">
                         <label class="form-label">9. Supporting Characters (Qty):</label>
-                        <input type="number" name="num_support_char" class="form-control" placeholder="e.g., 2" min="0" max="5">
+                        <input type="number" name="num_support_char" class="form-control" placeholder="e.g., 2" min="0" max="5" value="{{ previous_inputs.get('num_support_char', '') }}">
                     </div>
 
                     <div class="col-md-6">
                         <label class="form-label">10. Generate Quiz:</label>
                         <select name="quiz_type" class="form-select">
-                            <option value="none">No Quiz</option>
-                            <option value="mcq">Multiple Choice</option>
-                            <option value="tf">True/False</option>
-                            <option value="open">Open Questions</option>
-                            <option value="mix">Mix</option>
+                            <option value="none" {% if previous_inputs.get('quiz_type') == 'none' %}selected{% endif %}>No Quiz</option>
+                            <option value="mcq" {% if previous_inputs.get('quiz_type') == 'mcq' %}selected{% endif %}>Multiple Choice</option>
+                            <option value="tf" {% if previous_inputs.get('quiz_type') == 'tf' %}selected{% endif %}>True/False</option>
+                            <option value="open" {% if previous_inputs.get('quiz_type') == 'open' %}selected{% endif %}>Open Questions</option>
+                            <option value="mix" {% if previous_inputs.get('quiz_type') == 'mix' %}selected{% endif %}>Mix</option>
                         </select>
                     </div>
 
                     <div class="col-md-6">
                         <label class="form-label">11. Words to Avoid:</label>
-                        <input type="text" name="negative_keywords" class="form-control" placeholder="e.g., ghost, kill...">
+                        <input type="text" name="negative_keywords" class="form-control" placeholder="e.g., ghost, kill..." value="{{ previous_inputs.get('negative_keywords', '') }}">
                     </div>
 
                     <div class="col-md-6">
@@ -221,14 +221,12 @@
 
 {% block scripts %}
     <script>
-        // THAY ĐỔI 3: Bọc toàn bộ JS trong DOMContentLoaded để tránh lỗi script chạy trước khi tải xong thư viện
         document.addEventListener("DOMContentLoaded", function() {
             
             const storyForm = document.getElementById('story-form');
             const loadingOverlay = document.getElementById('loading-overlay');
             const resultContainer = document.getElementById('story-result-container');
             
-            // Khởi tạo Modal an toàn
             const confirmModalEl = document.getElementById('confirmModal');
             let confirmModal;
             if (confirmModalEl) {
@@ -240,14 +238,13 @@
             function showLoading() { loadingOverlay.style.display = 'flex'; }
             function hideLoading() { loadingOverlay.style.display = 'none'; }
 
-            // 1. KHI BẤM NÚT "WRITE MY STORY" (SUBMIT FORM) -> HIỆN MODAL
+            // 1. CLICK SUBMIT -> SHOW MODAL
             if (storyForm) {
                 storyForm.addEventListener('submit', function(event) {
-                    event.preventDefault(); // QUAN TRỌNG: CHẶN reload trang lần 2
+                    event.preventDefault(); 
                     
                     const fd = new FormData(storyForm);
                     
-                    // Đổ dữ liệu vào Modal
                     document.getElementById('conf-idea').textContent = fd.get('idea');
                     document.getElementById('conf-audience').textContent = fd.get('target_audience');
                     document.getElementById('conf-level').textContent = fd.get('cefr_level');
@@ -257,19 +254,33 @@
                     document.getElementById('conf-theme').textContent = fd.get('theme');
                     document.getElementById('conf-setting').textContent = fd.get('setting') || "(Auto)";
                     
-                    if (confirmModal) confirmModal.show(); // Hiện bảng xác nhận
+                    if (confirmModal) confirmModal.show();
                 });
             }
 
-            // 2. KHI BẤM NÚT "GENERATE" TRONG MODAL -> GỌI API
+            // 2. CLICK GENERATE -> CALL API
             if (btnRealSubmit) {
                 btnRealSubmit.addEventListener('click', async function() {
-                    if (confirmModal) confirmModal.hide(); // Tắt bảng
-                    showLoading(); // Hiện vòng xoay
+                    if (confirmModal) confirmModal.hide();
+                    showLoading();
                     resultContainer.innerHTML = '';
 
+                    // THU THẬP DỮ LIỆU ĐỂ LƯU LẠI (CHO TÍNH NĂNG REUSE)
+                    const formData = new FormData(storyForm);
+                    
+                    // Logic fix để lưu checkbox (JS mặc định chỉ lưu 1 value)
+                    const formObj = {};
+                    formData.forEach((value, key) => {
+                        if (formObj[key]) {
+                            if (!Array.isArray(formObj[key])) formObj[key] = [formObj[key]];
+                            formObj[key].push(value);
+                        } else {
+                            formObj[key] = value;
+                        }
+                    });
+                    const inputsJson = JSON.stringify(formObj);
+
                     try {
-                        const formData = new FormData(storyForm);
                         const response = await fetch("{{ url_for('handle_generation') }}", { 
                             method: 'POST', body: formData
                         }); 
@@ -281,7 +292,6 @@
                         if (storyContent && storyContent.startsWith('ERROR:')) {
                             resultHTML = `<div class="alert alert-danger shadow-sm"><h3><i class="bi bi-exclamation-triangle"></i> Error</h3><pre>${storyContent}</pre></div>`;
                         } else if (storyContent) {
-                            // Hiển thị kết quả đẹp
                             resultHTML = `
                                 <div class="input-section border-top border-5 border-success position-relative fade-in">
                                     <span class="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-success fs-6 shadow">
@@ -291,6 +301,8 @@
                                     <hr class="my-4">
                                     <form action="{{ url_for('handle_save_story') }}" method="POST" class="text-end">
                                         <input type="hidden" name="story_content" value="${escapeHTML(storyContent)}">
+                                        <input type="hidden" name="prompt_data_json" value='${inputsJson}'>
+                                        
                                         <button type="submit" class="btn btn-success btn-lg shadow">
                                             <i class="bi bi-save-fill"></i> Save to Library
                                         </button>
@@ -302,8 +314,6 @@
                         
                         hideLoading(); 
                         resultContainer.innerHTML = resultHTML;
-                        
-                        // Cuộn xuống kết quả
                         resultContainer.scrollIntoView({ behavior: 'smooth' });
 
                     } catch (error) {
