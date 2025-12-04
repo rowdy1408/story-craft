@@ -26,15 +26,22 @@ app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default_secret_key_change_m
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Kiểm tra xem có ổ đĩa gắn ngoài (/var/data) không? (Dành cho Render)
-if os.path.exists('/var/data'):
-    db_path = '/var/data/story_project.db'
-    print("--> USING RENDER PERSISTENT DISK")
-else:
-    # Nếu chạy trên máy tính cá nhân
-    db_path = os.path.join(base_dir, 'instance', 'story_project.db')
-    print("--> USING LOCAL INSTANCE FOLDER")
+# --- CẤU HÌNH DATABASE THÔNG MINH ---
+# Lấy URL database từ biến môi trường (trên Render sẽ set cái này)
+database_url = os.environ.get('DATABASE_URL')
 
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+if database_url:
+    # Fix lỗi nhỏ của thư viện cũ: chuyển postgres:// thành postgresql://
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    print("--> USING CLOUD DATABASE (PostgreSQL)")
+else:
+    # Nếu không có biến môi trường (chạy local), dùng SQLite
+    db_path = os.path.join(base_dir, 'instance', 'story_project.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+    print("--> USING LOCAL SQLITE")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Đường dẫn Upload

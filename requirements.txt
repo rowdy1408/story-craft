@@ -9,3 +9,4 @@ gunicorn
 werkzeug
 PyPDF2
 python-docx
+psycopg2-binary
