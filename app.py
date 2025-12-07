@@ -209,7 +209,7 @@ def create_prompt_for_ai(inputs):
 
     prompt = f"""
     **Role:** Expert Graded Reader Author for **{raw_audience}**.
-    **Task:** Write a story optimized for fluency.
+    **Task:** Write a compelling story optimized for fluency and emotional engagement.
     
     **INPUTS:**
     - Idea: {inputs['idea']}
@@ -228,6 +228,9 @@ def create_prompt_for_ai(inputs):
        {tone_instruction}
     6. **GRAMMAR:** {grammar_rule}
     7. **NO HIGHLIGHTING:** Plain text only.
+    8. **EMOTIONAL DEPTH (CRITICAL):** - Do not just describe actions. Show the character's internal feelings, worries, or excitement.
+       - Use physical reactions to show emotion (e.g., "Her hands were shaking," "He felt a weight lift off his shoulders").
+       - Make the reader care about the outcome.
 
     {avoid_instr}
     {style_instr}
@@ -268,15 +271,22 @@ def create_quiz_only_prompt(story_text, quiz_type):
 def create_comic_script_prompt(story_content):
     return f"""
     **Role:** Professional Comic Book Director.
-    **Task:** Convert the story into a Comic Script JSON.
+    **Task:** Convert the story into a Comic Script JSON with Image Prompts suitable for AI generators (Midjourney/DALL-E).
     **INPUT STORY:** {story_content}
-    **CRITICAL:**
-    1. One Panel per Page.
+    
+    **CRITICAL VISUAL STYLE (MUST APPLY TO ALL PANELS):**
+    - The 'visual_description' MUST describe a **Digital Comic Book Style**.
+    - Keywords to include in descriptions: "Comic book art, flat colors, bold outlines, expressive characters, 2D vector illustration, vibrant, clean lines".
+    - **NO** photorealism, **NO** 3D render, **NO** blurry details.
+    
+    **CRITICAL STRUCTURE:**
+    1. One Panel per Page/Chapter.
     2. Caption must match story text verbatim.
     3. Generate Back Cover metadata.
+
     **OUTPUT JSON FORMAT:**
     {{
-      "panels": [ {{ "panel_number": 1, "visual_description": "...", "caption": "..." }} ],
+      "panels": [ {{ "panel_number": 1, "visual_description": "Comic book style: [Describe scene...]", "caption": "..." }} ],
       "back_cover": {{ "summary": "...", "theme": "...", "level": "..." }}
     }}
     """
