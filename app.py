@@ -125,6 +125,43 @@ def generate_story_ai(api_key, prompt):
         return "Error parsing response"
     except Exception as e: return f"System Error: {e}"
 
+def robust_json_extract(text):
+    """
+    Cố gắng trích xuất JSON từ phản hồi của AI, xử lý cả trường hợp
+    có Markdown code blocks (```json ... ```) hoặc text thường.
+    """
+    try:
+        # 1. Thử tìm khối code Markdown trước (chính xác nhất)
+        code_block_pattern = r"```(?:json)?\s*(\{.*?\})\s*```"
+        match = re.search(code_block_pattern, text, re.DOTALL)
+        
+        json_str = ""
+        if match:
+            json_str = match.group(1)
+        else:
+            # 2. Nếu không có markdown, tìm cặp ngoặc nhọn {} bao quanh nội dung lớn nhất
+            # Tìm dấu { đầu tiên
+            start_idx = text.find('{')
+            # Tìm dấu } cuối cùng
+            end_idx = text.rfind('}')
+            
+            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                json_str = text[start_idx : end_idx + 1]
+            else:
+                return None # Không tìm thấy cấu trúc JSON
+
+        # 3. Làm sạch các lỗi cú pháp phổ biến của AI
+        # Xóa comments kiểu // (nếu có)
+        json_str = re.sub(r'//.*', '', json_str)
+        # Fix lỗi dấu phẩy thừa cuối danh sách/object (ví dụ: {"a": 1,} -> {"a": 1})
+        json_str = re.sub(r',\s*([\]}])', r'\1', json_str)
+        
+        return json.loads(json_str)
+        
+    except Exception as e:
+        print(f"JSON Parsing Error: {e}")
+        return None
+    
 # --- 4. ADVANCED PROMPT ENGINEERING (UPDATED) ---
 
 CEFR_LEVEL_GUIDELINES = {
@@ -304,25 +341,41 @@ def create_comic_direct(story_id):
     api_key = configure_ai()
     
     try:
-        # 1. Tạo kịch bản JSON
-        json_str = generate_story_ai(api_key, create_comic_script_prompt(story.content))
-        match = re.search(r'\{.*\}', json_str, re.DOTALL)
-        if match: 
-            data = json.loads(re.sub(r',\s*([\]}])', r'\1', match.group()))
-        else: return jsonify({"error": "AI JSON Error"}), 500
+        # 1. Gọi AI để lấy kịch bản
+        ai_response_text = generate_story_ai(api_key, create_comic_script_prompt(story.content))
+        
+        # 2. Sử dụng hàm trích xuất mạnh mẽ thay vì regex đơn giản
+        data = robust_json_extract(ai_response_text)
+        
+        if not data:
+            # Fallback: Nếu AI trả về lỗi hoặc text không parse được
+            print("AI Response Raw:", ai_response_text) # Log để debug trên Render
+            return jsonify({"error": "AI trả về dữ liệu không đúng định dạng JSON. Vui lòng thử lại."}), 500
 
-        panels_data = data.get('panels', data)
+        # Xử lý trường hợp AI trả về key khác (đôi khi AI dùng "scenes" thay vì "panels")
+        panels_data = data.get('panels', data.get('scenes', data))
+        
+        # Đảm bảo panels_data là một list
+        if not isinstance(panels_data, list):
+             # Nếu AI trả về object đơn lẻ thay vì list, bọc nó lại
+             if isinstance(panels_data, dict): panels_data = [panels_data]
+             else: return jsonify({"error": "Cấu trúc JSON không hợp lệ (cần danh sách panels)."}), 500
+
         final_panels = []
 
-        # 2. Xử lý Prompt (Chỉ tạo Text Prompt)
+        # 3. Xử lý Prompt (Giữ nguyên logic cũ của bạn)
         for panel in panels_data:
-            raw = panel.get('visual_description') or panel.get('prompt')
-            for w in ["comic", "panel", "page", "grid"]: raw = raw.replace(w, "image")
+            # Linh hoạt lấy key: visual_description HOẶC description HOẶC prompt
+            raw = panel.get('visual_description') or panel.get('description') or panel.get('prompt') or "A scene from the story"
+            
+            # Clean keywords
+            for w in ["comic", "panel", "page", "grid", "speech bubble", "text"]: 
+                raw = raw.replace(w, "image")
             
             final_prompt = f"A single cinematic movie still, full screen digital art. {raw} --ar 3:2 --no text speech bubbles comic grid collage"
             
             final_panels.append({
-                "panel_number": panel['panel_number'],
+                "panel_number": panel.get('panel_number', len(final_panels) + 1),
                 "image_url": "", 
                 "prompt": final_prompt,
                 "caption": panel.get('caption', '')
@@ -332,7 +385,9 @@ def create_comic_direct(story_id):
         db.session.add(new_comic)
         db.session.commit()
         return jsonify({"success": True, "redirect_url": url_for('view_comic', comic_id=new_comic.id)})
-    except Exception as e: return jsonify({"error": str(e)}), 500
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/view-comic/<int:comic_id>')
 @login_required
