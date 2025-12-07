@@ -190,13 +190,23 @@ def create_prompt_for_ai(inputs):
 
     if cefr_level in ["PRE A1", "A1"]:
         if audience_type == "ADULT":
-            structure_instruction = "- **Structure:** Write **3-5 clear PARAGRAPHS**. NO 'Page' breaks."
+            structure_instruction = "- **Structure:** Write **3-5 clear PARAGRAPHS**. Separate them with a blank line."
             tone_instruction = "**Context:** Adult daily life."
         else:
-            structure_instruction = "- **Structure:** Split into **8-12 short 'PAGES'**. Label `--- PAGE [X] ---`. 1-2 sentences/page."
+            # Truyện tranh cho trẻ em
+            structure_instruction = "- **Structure:** Split into **8-12 short 'PAGES'**. Label exactly: `--- PAGE [X] ---`. 1-2 sentences per page."
             tone_instruction = "**Tone:** Visual, simple for kids."
     else:
-        structure_instruction = "- **Structure:** Split into **CHAPTERS**."
+        # Truyện cho trình độ A2 trở lên (Chia chương)
+        # --- SỬA ĐOẠN NÀY ĐỂ BỎ DẤU ## ---
+        structure_instruction = (
+            "- **Structure:** Split into 4-5 logical sections.\n"
+            "       - **HEADER FORMAT:** Use CLEAN book formatting. NO Markdown symbols (# or *).\n"
+            "       - **STYLE:** Write the Chapter Number and Title in UPPERCASE on a separate line.\n"
+            "       - **Example:**\n"
+            "         CHAPTER 1: THE SECRET GARDEN\n\n"
+            "         The sun was shining..." 
+        )
         tone_instruction = f"**Tone:** Engaging for {raw_audience}."
 
     grammar_rule = CEFR_LEVEL_GUIDELINES.get(cefr_level, CEFR_LEVEL_GUIDELINES["B1"])
@@ -271,22 +281,23 @@ def create_quiz_only_prompt(story_text, quiz_type):
 def create_comic_script_prompt(story_content):
     return f"""
     **Role:** Professional Comic Book Director.
-    **Task:** Convert the story into a Comic Script JSON with Image Prompts suitable for AI generators (Midjourney/DALL-E).
+    **Task:** Convert the story into a Comic Script JSON.
     **INPUT STORY:** {story_content}
     
     **CRITICAL VISUAL STYLE (MUST APPLY TO ALL PANELS):**
-    - The 'visual_description' MUST describe a **Digital Comic Book Style**.
-    - Keywords to include in descriptions: "Comic book art, flat colors, bold outlines, expressive characters, 2D vector illustration, vibrant, clean lines".
-    - **NO** photorealism, **NO** 3D render, **NO** blurry details.
-    
-    **CRITICAL STRUCTURE:**
-    1. One Panel per Page/Chapter.
-    2. Caption must match story text verbatim.
-    3. Generate Back Cover metadata.
+    - Style: **Flat 2D Vector Art**, Ligne Claire style (Tintin style), bright colors, clean bold outlines.
+    - **CHARACTER CONSISTENCY (IMPORTANT):**
+      - Main Character: **"A cute 4-year-old Vietnamese boy named Nhân, wearing a RED T-SHIRT and BLUE SHORTS, short black hair."** - (You MUST repeat this description "wearing a RED T-SHIRT and BLUE SHORTS" in EVERY panel prompt to keep him consistent).
+    - **NO TEXT IN IMAGE:**
+      - Absolutely **NO** speech bubbles, **NO** captions, **NO** character names, and **NO** text inside the visual image. The image should be pure visual art.
+    - **SAFETY GUIDELINES:**
+      - Do NOT use words like "terrified", "panic", "suffering", "hurt", "crying intensely" when describing the child.
+      - Instead use softer words: "looking surprised", "looking for mom", "sitting on the ground", "wide eyes".
+      - Describe the *storm* as chaotic, but keep the child safe in the visual description (e.g., "The wind blows leaves around him" instead of "The wind attacks him").
 
     **OUTPUT JSON FORMAT:**
     {{
-      "panels": [ {{ "panel_number": 1, "visual_description": "Comic book style: [Describe scene...]", "caption": "..." }} ],
+      "panels": [ {{ "panel_number": 1, "visual_description": "Comic book style: A wide shot... Nhân (wearing red t-shirt, blue shorts)...", "caption": "..." }} ],
       "back_cover": {{ "summary": "...", "theme": "...", "level": "..." }}
     }}
     """

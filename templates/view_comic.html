@@ -277,37 +277,84 @@
         });
     }
 
+    // --- HÀM UPLOAD ĐÃ ĐƯỢC SỬA LỖI ---
     async function uploadImage(loopIndex, panelNum) {
+        // Debug: Kiểm tra xem nút bấm có nhận đúng index không
+        console.log("Uploading for loop index:", loopIndex, "Panel Num:", panelNum);
+
         const fileInput = document.getElementById(`file-input-${loopIndex}`);
+        const btn = event.target; // Lấy nút đang bấm để tạo hiệu ứng loading
+
+        if (!fileInput) {
+            alert(`Error: Cannot find file input for index ${loopIndex}`);
+            return;
+        }
+
         const file = fileInput.files[0];
-        if (!file) { alert("Select a file!"); return; }
+        if (!file) { 
+            alert("Please select an image file first!"); 
+            return; 
+        }
+
+        // Hiệu ứng Loading
+        const originalText = btn.innerText;
+        btn.innerText = "Uploading...";
+        btn.disabled = true;
+
         const comicId = document.getElementById('comic_id').value;
         const formData = new FormData();
         formData.append('file', file);
         formData.append('comic_id', comicId);
         formData.append('panel_number', panelNum);
+
         try {
             const res = await fetch('/upload-panel-image', { method: 'POST', body: formData });
+            
+            if (!res.ok) throw new Error("Upload failed on server");
+            
             const data = await res.json();
             if (data.url) {
+                // Tìm các phần tử giao diện tương ứng để cập nhật
                 const img = document.getElementById(`img-${loopIndex}`);
                 const inputGroup = document.getElementById(`input-group-${loopIndex}`);
                 const editBtn = document.getElementById(`btn-edit-${loopIndex}`);
-                img.src = data.url;
-                img.classList.remove('d-none'); img.classList.add('d-block');
-                inputGroup.classList.remove('d-block'); inputGroup.classList.add('d-none');
-                editBtn.classList.remove('d-none'); editBtn.classList.add('d-block');
-            } else { alert("Upload failed"); }
-        } catch (e) { alert("Error uploading"); }
+                
+                // Hiển thị ảnh mới
+                // Thêm tham số timestamp để tránh cache trình duyệt
+                img.src = data.url + "?t=" + new Date().getTime(); 
+                
+                img.classList.remove('d-none'); 
+                img.classList.add('d-block');
+                
+                // Ẩn ô upload, hiện nút edit
+                inputGroup.classList.remove('d-block'); 
+                inputGroup.classList.add('d-none');
+                
+                editBtn.classList.remove('d-none'); 
+                editBtn.classList.add('d-block');
+            } else { 
+                alert("Upload failed: " + (data.error || "Unknown error")); 
+            }
+        } catch (e) { 
+            console.error(e);
+            alert("Error uploading image. Check console for details."); 
+        } finally {
+            // Trả lại trạng thái nút bấm
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
     }
 
     function reEditImage(loopIndex) {
         const img = document.getElementById(`img-${loopIndex}`);
         const inputGroup = document.getElementById(`input-group-${loopIndex}`);
         const editBtn = document.getElementById(`btn-edit-${loopIndex}`);
+        
+        // Ẩn ảnh, hiện lại ô upload
         img.classList.add('d-none');
         editBtn.classList.add('d-none');
         inputGroup.classList.remove('d-none');
+        inputGroup.classList.add('d-block');
     }
 </script>
 {% endblock %}
