@@ -280,33 +280,41 @@ def create_quiz_only_prompt(story_text, quiz_type):
 
 def create_comic_script_prompt(story_content):
     return f"""
-    **Role:** Professional Art Director for a Silent Graphic Novel.
-    **Task:** Convert the story into a Visual Script JSON.
+    **Role:** Art Director for a series of Cinematic Illustrations.
+    **Task:** Break down the story into a list of SINGLE, STANDALONE image prompts.
     **INPUT STORY:** {story_content}
-    
-    **CRITICAL VISUAL GUIDELINES (STRICT):**
-    1. **NO TEXT RULE:** The output images must be **100% TEXTLESS**. 
-       - NEVER use the words "Comic book", "Comic style", "Panel", or "Speech bubble" in the visual description. These words trigger text generation.
-       - INSTEAD USE: "Cinematic screenshot", "Wide angle photography", "3D render style", or "Book illustration".
-    
-    2. **ART STYLE:** - **Style:** Flat 2D Vector Art, Ligne Claire (Tintin style), vibrant colors, clean lines.
-       - **Format:** Each description MUST start with the exact phrase: **"Textless art, pure visual scene, no text, no speech bubbles. [Shot Type] of..."**
 
-    3. **CHARACTER CONSISTENCY:**
-       - Main Character: **"A cute 4-year-old Vietnamese boy named Nhân, wearing a RED T-SHIRT and BLUE SHORTS, short black hair."** - (REPEAT this exact character description in EVERY single panel prompt).
+    **1. CRITICAL: FORMATTING (ANTI-GRID RULE):**
+    - You are generating prompts for **12 SEPARATE images**. 
+    - **FORBIDDEN:** Do NOT describe a "comic page", "grid layout", "split screen", or "sequence of panels".
+    - **REQUIRED:** Treat each panel as a **"Full Screen Cinematic Shot"**. Focus on ONE main action per image.
 
-    4. **SAFETY & CLARITY:**
-       - Describe physical actions (e.g., "The boy is looking at the sky") instead of abstract concepts (e.g., "The boy wonders about life").
-       - Keep the child safe (no scary or violent descriptions).
+    **2. VISUAL STYLE (THE "LOOK"):**
+    - **Art Style:** "2D vector illustration, flat colors, bold outlines, clean lines, Ligne Claire style (Tintin style)."
+    - **Atmosphere:** Start bright and colorful. When the storm hits, shift to "Muted colors, grey sky, dynamic wind lines, chaotic background."
+
+    **3. CHARACTER & SAFETY (THE MIDDLE GROUND):**
+    - **Identity:** "A cute 4-year-old Vietnamese boy named Nhân, wearing a RED T-SHIRT and BLUE SHORTS, short black hair." (REPEAT in every prompt).
+    - **SAFETY GUIDELINES (Must Follow):** - The child must appear **PHYSICALLY SAFE** (no blood, no wounds, no torn clothes, no dirt on face).
+      - **EXPRESS EMOTION:** Show fear through body language: "Hugging his knees", "Hands covering ears", "Eyes wide looking up", "Mouth open shouting".
+      - **DRAMA:** Put the danger in the *environment* (flying leaves, bending trees, dark clouds), NOT on the child's body.
+
+    **4. NEGATIVE CONSTRAINTS:**
+    - **NO TEXT:** The image must be a textless illustration. No speech bubbles.
+    - **NO COLLAGE:** Single scene only.
 
     **OUTPUT JSON FORMAT:**
     {{
       "panels": [ 
         {{ 
             "panel_number": 1, 
-            "visual_description": "Textless art, pure visual scene, no text, no speech bubbles. Wide cinematic shot of a bustling Saigon market. Bright sunlight. In the center is a cute 4-year-old Vietnamese boy named Nhân (wearing a RED T-SHIRT and BLUE SHORTS)...", 
-            "caption": "Nhân is in a big market." 
-        }} 
+            "visual_description": "2D vector illustration, bold outlines. A wide cinematic shot of a bustling Saigon market. Nhân (red t-shirt, blue shorts) is holding his mom's hand. The sun is shining...", 
+            "caption": "Nhân is happy in the market." 
+        }},
+        {{
+            "panel_number": 2,
+            ...
+        }}
       ],
       "back_cover": {{ "summary": "...", "theme": "...", "level": "..." }}
     }}
@@ -523,19 +531,26 @@ def create_comic_direct(story_id):
             # Lấy mô tả từ AI
             raw_prompt = panel.get('visual_description') or panel.get('prompt')
             
-            # --- BỔ SUNG: HARDCODE CHẶN CHỮ ---
-            # Thêm " --no text speech bubbles words letters" vào cuối prompt (cú pháp của Midjourney)
-            # Hoặc thêm "Textless image" vào đầu nếu chưa có.
-            clean_prompt = f"Textless, no speech bubbles. {raw_prompt} --no text letters words speech bubbles"
-            # ----------------------------------
+            # --- XỬ LÝ PROMPT ---
+            
+            # 1. Cắt bỏ các từ gây hiểu nhầm là "Truyện tranh nhiều ô"
+            remove_words = ["comic strip", "comic page", "panel layout", "grid"]
+            for word in remove_words:
+                raw_prompt = raw_prompt.replace(word, "illustration")
 
+            # 2. Ép cứng Style (giúp ảnh đồng nhất) + Single Shot
+            style_prefix = "2D vector illustration, flat colors, bold outlines, single full shot. "
+            
+            # 3. Prompt cuối cùng: Style + Nội dung + Chặn chữ/Grid
+            # Thêm "--no text grid split-screen" để chặn AI chia khung
+            final_prompt = f"{style_prefix} {raw_prompt} --no text speech bubbles typography grid split-screen collage"
+            
             final_panels.append({
                 "panel_number": panel['panel_number'],
                 "image_url": "", 
-                "prompt": clean_prompt, # Dùng prompt đã xử lý
+                "prompt": final_prompt,
                 "caption": panel.get('caption', '')
             })
-
         new_comic = Comic(story_id=story_id, panels_content=json.dumps(final_panels))
         db.session.add(new_comic)
         db.session.commit()
