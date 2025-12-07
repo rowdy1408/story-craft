@@ -4,7 +4,8 @@ import http.client
 import sys
 import webbrowser
 import uuid
-import re  # <--- MỚI: Dùng để xử lý Regex cho JSON
+import re
+import time  # Dùng để tạo độ trễ tránh Spam Google Image API
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash
 from flask_sqlalchemy import SQLAlchemy
@@ -14,76 +15,95 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import PyPDF2
 import docx
+import google.generativeai as genai  # Thư viện AI tạo ảnh của Google
 
-# --- 1. CẤU HÌNH BAN ĐẦU ---
-load_dotenv() # Load biến môi trường từ file .env
+# --- 1. CẤU HÌNH BAN ĐẦU (CONFIG) ---
+load_dotenv()  # Load biến môi trường từ file .env
 
 app = Flask(__name__)
-# Lấy Secret Key từ file .env, nếu không có thì dùng key tạm
+# Lấy Secret Key từ file .env, quan trọng cho bảo mật session
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default_secret_key_change_me')
 
-# Đường dẫn DB
+# Đường dẫn thư mục gốc
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Kiểm tra xem có ổ đĩa gắn ngoài (/var/data) không? (Dành cho Render)
-# --- CẤU HÌNH DATABASE THÔNG MINH ---
-# Lấy URL database từ biến môi trường (trên Render sẽ set cái này)
+# --- CẤU HÌNH DATABASE (AUTO DETECT RENDER OR LOCAL) ---
 database_url = os.environ.get('DATABASE_URL')
 
 if database_url:
-    # Fix lỗi nhỏ của thư viện cũ: chuyển postgres:// thành postgresql://
+    # Fix lỗi nhỏ của thư viện cũ: chuyển postgres:// thành postgresql:// cho Render
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
     
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-    print("--> USING CLOUD DATABASE (PostgreSQL)")
+    print("--> SYSTEM STATUS: USING CLOUD DATABASE (PostgreSQL)")
 else:
-    # Nếu không có biến môi trường (chạy local), dùng SQLite
+    # Nếu chạy Local máy tính cá nhân -> Dùng SQLite
     db_path = os.path.join(base_dir, 'instance', 'story_project.db')
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
-    print("--> USING LOCAL SQLITE")
+    print("--> SYSTEM STATUS: USING LOCAL SQLITE")
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Đường dẫn Upload
+# Đường dẫn Upload ảnh/file
 UPLOAD_FOLDER = os.path.join(base_dir, 'static', 'uploads')
-if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER)
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
 instance_folder = os.path.join(base_dir, 'instance')
-if not os.path.exists(instance_folder): os.makedirs(instance_folder)
+if not os.path.exists(instance_folder):
+    os.makedirs(instance_folder)
 
+# --- CẤU HÌNH GOOGLE GENERATIVE AI (IMAGE GEN) ---
+# Lấy key từ Render Environment Variable
+GOOGLE_GEN_AI_KEY = os.environ.get("GOOGLE_GEN_AI_KEY")
+if GOOGLE_GEN_AI_KEY:
+    genai.configure(api_key=GOOGLE_GEN_AI_KEY)
+    print("--> GOOGLE IMAGE GEN: READY (API Key Found)")
+else:
+    print("--> GOOGLE IMAGE GEN: DISABLED (Missing GOOGLE_GEN_AI_KEY)")
+
+# Khởi tạo DB và Login Manager
 db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login' # Chưa đăng nhập thì đá về trang login
+login_manager.login_view = 'login'  # Nếu chưa đăng nhập, đá về trang login
 
-# --- 2. MODELS ---
+# --- 2. DATABASE MODELS (CÁC BẢNG DỮ LIỆU) ---
+
 class User(UserMixin, db.Model):
+    """Bảng người dùng"""
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
-    is_locked = db.Column(db.Boolean, default=False) 
+    is_locked = db.Column(db.Boolean, default=False)  # Admin có thể khóa nick
     stories = db.relationship('Story', backref='author', lazy=True)
 
 class Style(db.Model):
+    """Bảng chứa các phong cách viết mẫu (Style Reference)"""
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
     content = db.Column(db.Text, nullable=False)
 
 class Story(db.Model):
+    """Bảng chứa câu chuyện đã tạo"""
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    # --- MỚI: Cột lưu trữ dữ liệu inputs để reuse sau này ---
-    prompt_data = db.Column(db.Text, nullable=True) 
+    # Lưu trữ input cũ để tái sử dụng (Reuse Prompt)
+    prompt_data = db.Column(db.Text, nullable=True)
     comics = db.relationship('Comic', backref='story', lazy=True)
 
 class Comic(db.Model):
+    """Bảng chứa kịch bản truyện tranh (JSON các Panel)"""
     id = db.Column(db.Integer, primary_key=True)
     story_id = db.Column(db.Integer, db.ForeignKey('story.id'), nullable=False)
+    # Lưu chuỗi JSON chứa danh sách các khung hình, prompt, url ảnh
     panels_content = db.Column(db.Text, nullable=False)
 
 class Feedback(db.Model):
+    """Bảng phản hồi gửi tới Admin"""
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     message = db.Column(db.Text, nullable=False)
@@ -94,9 +114,10 @@ class Feedback(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- 3. HELPER & CONFIG ---
+# --- 3. HELPER FUNCTIONS (CÁC HÀM XỬ LÝ PHỤ) ---
+
 def configure_ai():
-    # Lấy API Key từ biến môi trường để bảo mật
+    """Lấy API Key cho việc tạo TEXT (Yescale/Gemini Text)"""
     api_key = os.environ.get("GOOGLE_API_KEY")
     if not api_key:
         print("ERROR: GOOGLE_API_KEY is empty in .env file.")
@@ -104,6 +125,7 @@ def configure_ai():
     return api_key
 
 def extract_text_from_file(file):
+    """Đọc file PDF hoặc DOCX để lấy style mẫu"""
     text = ""
     filename = file.filename.lower()
     try:
@@ -116,46 +138,70 @@ def extract_text_from_file(file):
             for para in doc.paragraphs:
                 text += para.text + "\n"
         else:
-            return None # Không hỗ trợ đuôi khác
+            return None  # Không hỗ trợ định dạng khác
     except Exception as e:
         print(f"Error reading file: {e}")
         return None
     return text
 
-# --- 4. GỌI AI (YESCALE WRAPPER) ---
 def generate_story_ai(api_key, prompt):
+    """Gọi API Yescale (Gemini Text) để viết truyện/kịch bản"""
     try:
         conn = http.client.HTTPSConnection("api.yescale.io")
         payload = json.dumps({
-            "model": "gemini-2.5-pro-thinking", 
-            "messages": [{"role": "user", "content": prompt}], 
-            "temperature": 0.7 
+            "model": "gemini-2.5-pro-thinking",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.7
         })
         headers = {
-            'Accept': 'application/json', 
-            'Authorization': f'Bearer {api_key}', 
+            'Accept': 'application/json',
+            'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json'
         }
-        print("--- Sending prompt to Yescale API... ---")
         conn.request("POST", "/v1/chat/completions", payload, headers)
         res = conn.getresponse()
         data = res.read().decode("utf-8")
-        
-        if res.status != 200: 
+
+        if res.status != 200:
             return f"ERROR: API call failed ({res.status}). {data}"
-        
+
         response_json = json.loads(data)
         if 'choices' in response_json and len(response_json['choices']) > 0:
-             content = response_json['choices'][0]['message']['content']
-             # Xóa dấu ** nếu AI trả về markdown bold quá nhiều
-             return content.replace('**', '') 
+            content = response_json['choices'][0]['message']['content']
+            # Xóa các ký tự markdown thừa nếu có
+            return content.replace('**', '')
         else:
-             return f"ERROR: Invalid response structure. {data}"
-
+            return f"ERROR: Invalid response structure. {data}"
     except Exception as e:
         return f"ERROR: System error: {e}"
 
-# --- 5. PROMPTS CHUYÊN SÂU ---
+def generate_image_google(prompt, output_path):
+    """
+    Hàm gọi Google Imagen 3 (Nano Banana) để VẼ TRANH.
+    Chỉ hoạt động khi có GOOGLE_GEN_AI_KEY.
+    """
+    try:
+        # Sử dụng model vẽ tranh mới nhất
+        model = genai.ImageGenerationModel("imagen-3.0-generate-001")
+
+        response = model.generate_images(
+            prompt=prompt,
+            number_of_images=1,
+            aspect_ratio="3:2",  # Tỷ lệ khung hình điện ảnh (Cinematic)
+            safety_filter_level="block_only_high",
+            person_generation="allow_adult",
+        )
+
+        if response and response.images:
+            response.images[0].save(output_path)
+            return True
+        return False
+    except Exception as e:
+        print(f"Error Google Image Gen: {e}")
+        return False
+
+# --- 4. PROMPTS ENGINEERING (CÁC MẪU LỆNH AI) ---
+
 CEFR_LEVEL_GUIDELINES = {
     "PRE A1": """- **Grammar:** Strict Pre-A1 (Present Simple, Be, Have, Imperatives). Avg 3-8 words/sentence. NO complex sentences.""",
     "A1": """- **Grammar:** Simple Present & Continuous, Can, Have got. Short dialogues. Avg 6-10 words/sentence.""",
@@ -167,10 +213,11 @@ CEFR_LEVEL_GUIDELINES = {
 }
 
 def create_prompt_for_ai(inputs):
+    """Tạo Prompt để viết truyện chữ (Story)"""
     vocab_list_str = ", ".join(inputs['vocab'])
     cefr_level = inputs['level'].upper()
-    
     raw_audience = inputs.get('target_audience', 'Children')
+    
     audience_type = "CHILDREN"
     if any(x in raw_audience.lower() for x in ['adult', 'business', 'office', 'student']):
         audience_type = "ADULT"
@@ -178,7 +225,7 @@ def create_prompt_for_ai(inputs):
     raw_support = inputs.get('num_support', '').strip()
     support_instruction = ""
     if not raw_support or raw_support == '0':
-        support_instruction = "Add 1-2 generic background characters if needed for realism."
+        support_instruction = "Add 1-2 generic background characters if needed."
     else:
         support_instruction = f"Include exactly **{raw_support} generic supporting characters**."
 
@@ -190,27 +237,19 @@ def create_prompt_for_ai(inputs):
 
     if cefr_level in ["PRE A1", "A1"]:
         if audience_type == "ADULT":
-            structure_instruction = "- **Structure:** Write **3-5 clear PARAGRAPHS**. Separate them with a blank line."
+            structure_instruction = "- **Structure:** Write **3-5 clear PARAGRAPHS**."
             tone_instruction = "**Context:** Adult daily life."
         else:
-            # Truyện tranh cho trẻ em
             structure_instruction = "- **Structure:** Split into **8-12 short 'PAGES'**. Label exactly: `--- PAGE [X] ---`. 1-2 sentences per page."
             tone_instruction = "**Tone:** Visual, simple for kids."
     else:
-        # Truyện cho trình độ A2 trở lên (Chia chương)
-        # --- SỬA ĐOẠN NÀY ĐỂ BỎ DẤU ## ---
         structure_instruction = (
             "- **Structure:** Split into 4-5 logical sections.\n"
             "       - **HEADER FORMAT:** Use CLEAN book formatting. NO Markdown symbols (# or *).\n"
-            "       - **STYLE:** Write the Chapter Number and Title in UPPERCASE on a separate line.\n"
-            "       - **Example:**\n"
-            "         CHAPTER 1: THE SECRET GARDEN\n\n"
-            "         The sun was shining..." 
+            "       - **Example:** CHAPTER 1: THE BEGINNING" 
         )
         tone_instruction = f"**Tone:** Engaging for {raw_audience}."
 
-    grammar_rule = CEFR_LEVEL_GUIDELINES.get(cefr_level, CEFR_LEVEL_GUIDELINES["B1"])
-    
     style_instr = ""
     if inputs['style_samples']:
         style_instr = "## STYLE REFERENCE\nMimic tone:\n" + "\n".join([f"Sample {i+1}: {s}" for i, s in enumerate(inputs['style_samples'])])
@@ -219,7 +258,7 @@ def create_prompt_for_ai(inputs):
 
     prompt = f"""
     **Role:** Expert Graded Reader Author for **{raw_audience}**.
-    **Task:** Write a compelling story optimized for fluency and emotional engagement.
+    **Task:** Write a compelling story optimized for fluency.
     
     **INPUTS:**
     - Idea: {inputs['idea']}
@@ -229,48 +268,38 @@ def create_prompt_for_ai(inputs):
     - Length: {inputs['count']} words.
     
     **RULES:**
-    1. **IDENTITY:** Main Char is **{inputs.get('main_char', 'Create one')}**. KEEP THIS NAME.
-    2. **SUPPORT:** {support_instruction}. Include simple dialogue.
+    1. **IDENTITY:** Main Char is **{inputs.get('main_char', 'Create one')}**.
+    2. **SUPPORT:** {support_instruction}.
     3. **SETTING:** {setting_instruction}
     4. **RECYCLING:** Use required words 3-5 times.
     5. **FORMAT ({audience_type}):**
        {structure_instruction}
        {tone_instruction}
-    6. **GRAMMAR:** {grammar_rule}
-    7. **NO HIGHLIGHTING:** Plain text only.
-    8. **EMOTIONAL DEPTH (CRITICAL):** - Do not just describe actions. Show the character's internal feelings, worries, or excitement.
-       - Use physical reactions to show emotion (e.g., "Her hands were shaking," "He felt a weight lift off his shoulders").
-       - Make the reader care about the outcome.
+    6. **GRAMMAR:** {CEFR_LEVEL_GUIDELINES.get(cefr_level, "Standard")}
+    7. **EMOTIONAL DEPTH:** Show internal feelings and physical reactions.
 
     {avoid_instr}
     {style_instr}
 
-    **OUTPUT:**
-    # [Title]
-    [
-    STORY CONTENT:
-    ...
-    ]
-    ---
-    ## Graded Definitions ({cefr_level})
-    ...
+    **OUTPUT:** [STORY CONTENT]
     """
     return prompt
 
 def create_translation_prompt(inputs):
+    """Prompt để dịch truyện cổ tích"""
     cefr_level = inputs['level'].upper()
     level_guidelines = CEFR_LEVEL_GUIDELINES.get(cefr_level, CEFR_LEVEL_GUIDELINES["B1"])
-    prompt = f"""
+    return f"""
     **Role:** Expert Graded Translator & Poet.
     **Task:** Retell the Vietnamese folktale "{inputs['folktale_name']}" in English.
     **CRITICAL INSTRUCTIONS:**
-    1. **POETIC TRANSLATION:** Identify iconic rhymes/verses. Translate them into **English Rhyming Couplets** (AABB or ABAB).
+    1. **POETIC TRANSLATION:** Identify iconic rhymes/verses. Translate them into English Rhyming Couplets.
     2. **CONSTRAINTS:** Level: {cefr_level}. Length: {inputs['count']} words. Grammar: {level_guidelines}.
     **OUTPUT:** # [English Title] ...
     """
-    return prompt
 
 def create_quiz_only_prompt(story_text, quiz_type):
+    """Prompt tạo câu hỏi trắc nghiệm"""
     return f"""
     **Role:** Educational Content Creator.
     **Task:** Create a Reading Quiz ({quiz_type}) for the story below.
@@ -279,69 +308,64 @@ def create_quiz_only_prompt(story_text, quiz_type):
     """
 
 def create_comic_script_prompt(story_content):
+    """
+    MASTER PROMPT CHO KỊCH BẢN ẢNH
+    Mục tiêu: Chặn chia ô (Grid), tạo ảnh đơn (Cinematic), Giữ an toàn cho trẻ.
+    """
     return f"""
-    **Role:** Art Director for a series of Cinematic Illustrations.
-    **Task:** Break down the story into a list of SINGLE, STANDALONE image prompts.
+    **Role:** Lead Concept Artist for an Animated Movie.
+    **Task:** Create visual descriptions for 12 KEYFRAMES (Single Movie Screenshots).
     **INPUT STORY:** {story_content}
 
-    **1. CRITICAL: FORMATTING (ANTI-GRID RULE):**
-    - You are generating prompts for **12 SEPARATE images**. 
-    - **FORBIDDEN:** Do NOT describe a "comic page", "grid layout", "split screen", or "sequence of panels".
-    - **REQUIRED:** Treat each panel as a **"Full Screen Cinematic Shot"**. Focus on ONE main action per image.
+    **1. THE "ANTI-GRID" RULE (CRITICAL):**
+    - You are describing a **SINGLE MOMENT IN TIME**. 
+    - **FORBIDDEN WORDS:** NEVER use "Comic panel", "Comic page", "Storyboard", "Sheet", "Sequence", "Split screen".
+    - **REQUIRED FORMAT:** Describe it as a "Close-up photograph", "Wide angle shot", "Macro shot".
 
-    **2. VISUAL STYLE (THE "LOOK"):**
-    - **Art Style:** "2D vector illustration, flat colors, bold outlines, clean lines, Ligne Claire style (Tintin style)."
-    - **Atmosphere:** Start bright and colorful. When the storm hits, shift to "Muted colors, grey sky, dynamic wind lines, chaotic background."
+    **2. VISUAL STYLE:**
+    - **Art Style:** "High-quality digital painting, Disney/Pixar style 2D, vibrant colors, soft lighting, cinematic composition." 
+    - (Note: We use this style because it forces 'Single Image' generation better than 'Comic style').
 
-    **3. CHARACTER & SAFETY (THE MIDDLE GROUND):**
-    - **Identity:** "A cute 4-year-old Vietnamese boy named Nhân, wearing a RED T-SHIRT and BLUE SHORTS, short black hair." (REPEAT in every prompt).
-    - **SAFETY GUIDELINES (Must Follow):** - The child must appear **PHYSICALLY SAFE** (no blood, no wounds, no torn clothes, no dirt on face).
-      - **EXPRESS EMOTION:** Show fear through body language: "Hugging his knees", "Hands covering ears", "Eyes wide looking up", "Mouth open shouting".
-      - **DRAMA:** Put the danger in the *environment* (flying leaves, bending trees, dark clouds), NOT on the child's body.
-
-    **4. NEGATIVE CONSTRAINTS:**
-    - **NO TEXT:** The image must be a textless illustration. No speech bubbles.
-    - **NO COLLAGE:** Single scene only.
+    **3. CHARACTER & EMOTION:**
+    - **Main Character:** "A cute 4-year-old Vietnamese boy named Nhân, wearing a RED T-SHIRT and BLUE SHORTS."
+    - **Safety:** The child is physically safe (no wounds, no blood).
+    - **Drama:** Focus on the ATMOSPHERE. 
+       - Instead of "He falls", describe: "Low angle shot from the ground. The boy is looking up, tears in eyes. The sky is dark and stormy."
 
     **OUTPUT JSON FORMAT:**
     {{
       "panels": [ 
         {{ 
             "panel_number": 1, 
-            "visual_description": "2D vector illustration, bold outlines. A wide cinematic shot of a bustling Saigon market. Nhân (red t-shirt, blue shorts) is holding his mom's hand. The sun is shining...", 
-            "caption": "Nhân is happy in the market." 
-        }},
-        {{
-            "panel_number": 2,
-            ...
+            "visual_description": "Cinematic digital art, wide shot. A busy Saigon market under a bright sun. Nhân (red t-shirt) is walking...", 
+            "caption": "Nhân is happy." 
         }}
       ],
       "back_cover": {{ "summary": "...", "theme": "...", "level": "..." }}
     }}
     """
 
-# --- 6. ROUTES AUTH (LOGIN/REGISTER) ---
+# --- 5. ROUTES (CÁC ĐƯỜNG DẪN XỬ LÝ) ---
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        admin_pin = request.form.get('admin_pin') # Lấy mã PIN
+        admin_pin = request.form.get('admin_pin')
 
         user = User.query.filter_by(username=username).first()
         
-        # Check khóa
+        # Kiểm tra tài khoản bị khóa
         if user and user.is_locked:
-            flash('Account LOCKED.', 'danger')
+            flash('Account LOCKED. Contact Admin.', 'danger')
             return render_template('login.html')
 
-        # --- LOGIC BẢO MẬT ADMIN ---
+        # Bảo mật cho Admin
         if user and user.username.lower() == 'admin':
-            # Mã PIN cứng cho Admin
             if admin_pin != "25121509": 
                 flash('Admin Security PIN required or incorrect!', 'danger')
                 return render_template('login.html')
-        # ---------------------------
 
         if user and check_password_hash(user.password_hash, password):
             login_user(user)
@@ -357,10 +381,8 @@ def register():
         password = request.form['password']
         code = request.form.get('secret_code')
 
-        # --- CẤU HÌNH 2 MÃ BÍ MẬT ---
         TEACHER_CODE = "GV_VIP_2025"       
         ADMIN_CODE = "BOSS_ONLY_999"      
-        # ----------------------------
 
         if code == ADMIN_CODE:
             pass 
@@ -380,11 +402,7 @@ def register():
         db.session.add(new_user)
         db.session.commit()
         
-        if username.lower() == 'admin':
-            flash('Welcome, Boss! Admin account created.', 'success')
-        else:
-            flash('Registration successful! Please login.', 'success')
-            
+        flash('Registration successful! Please login.', 'success')
         return redirect(url_for('login'))
         
     return render_template('register.html')
@@ -395,7 +413,6 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# --- 7. ROUTES CHÍNH ---
 @app.route('/')
 @login_required
 def index():
@@ -404,6 +421,7 @@ def index():
 @app.route('/generate-story', methods=['POST'])
 @login_required
 def handle_generation():
+    """Xử lý tạo câu chuyện chữ"""
     api_key = configure_ai()
     if not api_key: return jsonify({"story_result": "ERROR: API Key missing or invalid."}), 500
     
@@ -451,106 +469,110 @@ def reset_password():
 
         user.password_hash = generate_password_hash(new_password)
         db.session.commit()
-        
         flash('Password reset successful!', 'success')
         return redirect(url_for('login'))
-
     return render_template('reset_password.html')
 
-# --- MỚI: ROUTE REUSE PROMPT ---
 @app.route('/reuse-prompt/<int:story_id>')
 @login_required
 def reuse_prompt(story_id):
+    """Tính năng tái sử dụng prompt cũ"""
     story = Story.query.get_or_404(story_id)
-    # Bảo mật: Chỉ chủ nhân mới xem được
     if story.user_id != current_user.id:
         flash("You do not have permission.", "danger")
         return redirect(url_for('saved_stories_page'))
     
-    # Load lại inputs cũ từ DB (nếu có)
     prev_inputs = {}
     if story.prompt_data:
         try:
             prev_inputs = json.loads(story.prompt_data)
-        except Exception as e:
-            print(f"Error parsing prompt_data: {e}")
+        except:
             prev_inputs = {}
-            
-    # Render trang index và nạp sẵn dữ liệu cũ
     return render_template('index.html', all_styles=Style.query.all(), previous_inputs=prev_inputs, user=current_user)
 
-# --- COMIC ROUTES (CẢI TIẾN AI RELIABILITY) ---
+# --- PHẦN QUAN TRỌNG: TẠO TRUYỆN TRANH & ẢNH ---
+
 @app.route('/create-comic/<int:story_id>', methods=['POST'])
 @login_required
 def create_comic_direct(story_id):
+    """
+    Quy trình:
+    1. Tạo kịch bản JSON (Prompt)
+    2. Nếu là Admin + Có Key ảnh: Tự động vẽ (Hybrid Mode)
+    3. Nếu User thường: Chỉ tạo Prompt để copy
+    """
     story = Story.query.get_or_404(story_id)
     if story.user_id != current_user.id:
-        return jsonify({"error": "Unauthorized: You do not own this story."}), 403
+        return jsonify({"error": "Unauthorized"}), 403
 
     api_key = configure_ai()
     if not api_key: return jsonify({"error": "API Key Error"}), 500
 
     try:
+        # Bước 1: Tạo kịch bản mô tả ảnh (JSON)
         prompt = create_comic_script_prompt(story.content)
         script_json_str = generate_story_ai(api_key, prompt)
         
-        # --- FIX MẠNH MẼ: DÙNG REGEX TÌM JSON (Feature #1) ---
-        print(f"DEBUG AI RAW OUTPUT: {script_json_str}") 
-
-        # Tìm chuỗi bắt đầu bằng '{' và kết thúc bằng '}' (bao gồm cả xuống dòng)
+        # Regex tìm JSON sạch
         match = re.search(r'\{.*\}', script_json_str, re.DOTALL)
-        
         if match:
             clean_json = match.group()
         else:
-            # Trường hợp AI không trả về JSON hoặc format quá lạ
-            return jsonify({"error": "AI did not return valid JSON. Please try again."}), 500
+            return jsonify({"error": "AI did not return valid JSON."}), 500
 
         try:
+            # Fix lỗi dấu phẩy thừa trong JSON
+            clean_json = re.sub(r',\s*([\]}])', r'\1', clean_json)
             data = json.loads(clean_json)
-        except json.JSONDecodeError as e:
-            # Cố gắng fix lỗi phổ biến: dấu phẩy thừa ở cuối list/object
-            try:
-                # Dùng regex xóa dấu phẩy trước dấu đóng ] hoặc }
-                clean_json = re.sub(r',\s*([\]}])', r'\1', clean_json)
-                data = json.loads(clean_json)
-            except:
-                print(f"JSON Parsing Error: {e} | Content: {clean_json}")
-                return jsonify({"error": "AI returned broken JSON syntax."}), 500
-        # -----------------------------------
+        except json.JSONDecodeError:
+            return jsonify({"error": "AI returned broken JSON syntax."}), 500
 
-        if 'panels' in data:
-            panels_data = data['panels']
-            back_cover = data.get('back_cover', {})
-        else:
-            panels_data = data
-            back_cover = {"summary": "Read to find out!", "theme": "Story", "level": "Unknown"}
-
+        panels_data = data.get('panels', data)
         final_panels = []
+        
+        # --- HYBRID MODE: KIỂM TRA QUYỀN ADMIN ---
+        is_admin_user = (current_user.username.lower() == 'admin') 
+        has_image_key = (os.environ.get("GOOGLE_GEN_AI_KEY") is not None)
+
+        # Bước 2: Vòng lặp xử lý từng khung hình
         for panel in panels_data:
-            # Lấy mô tả từ AI
+            # A. Xử lý Prompt Text (Chuẩn hóa & Anti-Grid)
             raw_prompt = panel.get('visual_description') or panel.get('prompt')
             
-            # --- XỬ LÝ PROMPT ---
+            # Xóa từ khóa gây hiểu nhầm (comic, page, grid...)
+            blacklist = ["comic", "panel", "page", "sheet", "grid", "strip"]
+            for word in blacklist: 
+                raw_prompt = raw_prompt.replace(word, "image").replace(word.capitalize(), "Image")
             
-            # 1. Cắt bỏ các từ gây hiểu nhầm là "Truyện tranh nhiều ô"
-            remove_words = ["comic strip", "comic page", "panel layout", "grid"]
-            for word in remove_words:
-                raw_prompt = raw_prompt.replace(word, "illustration")
+            # Master Prompt: Ép style phim ảnh + Chặn chữ
+            prefix = "A single cinematic movie still, full screen digital art. "
+            suffix = " --ar 3:2 --no text speech bubbles comic grid collage split-screen"
+            final_prompt = f"{prefix} {raw_prompt} {suffix}"
 
-            # 2. Ép cứng Style (giúp ảnh đồng nhất) + Single Shot
-            style_prefix = "2D vector illustration, flat colors, bold outlines, single full shot. "
-            
-            # 3. Prompt cuối cùng: Style + Nội dung + Chặn chữ/Grid
-            # Thêm "--no text grid split-screen" để chặn AI chia khung
-            final_prompt = f"{style_prefix} {raw_prompt} --no text speech bubbles typography grid split-screen collage"
+            # Chuẩn bị file
+            filename = f"comic_{story_id}_p{panel['panel_number']}_{uuid.uuid4().hex[:6]}.png"
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            image_url = "" 
+
+            # B. LOGIC TỰ ĐỘNG VẼ (CHỈ CHO ADMIN)
+            if has_image_key and is_admin_user:
+                print(f"--> [ADMIN AUTO] Generating Panel {panel['panel_number']}...")
+                success = generate_image_google(final_prompt, filepath)
+                if success:
+                    image_url = f"/static/uploads/{filename}"
+                    print(f"    Success!")
+                    # QUAN TRỌNG: Nghỉ 4 giây để tránh Rate Limit của Google
+                    time.sleep(4) 
+                else:
+                    print("    Failed (Rate Limit or Error).")
             
             final_panels.append({
                 "panel_number": panel['panel_number'],
-                "image_url": "", 
+                "image_url": image_url, 
                 "prompt": final_prompt,
                 "caption": panel.get('caption', '')
             })
+            
         new_comic = Comic(story_id=story_id, panels_content=json.dumps(final_panels))
         db.session.add(new_comic)
         db.session.commit()
@@ -563,9 +585,9 @@ def create_comic_direct(story_id):
 @app.route('/upload-panel-image', methods=['POST'])
 @login_required
 def upload_panel_image():
+    """Cho phép người dùng tự upload ảnh nếu không thích ảnh AI"""
     if 'file' not in request.files: return jsonify({"error": "No file"}), 400
     file = request.files['file']
-    if file.filename == '': return jsonify({"error": "No selection"}), 400
     if file:
         comic_id = request.form.get('comic_id')
         panel_num = request.form.get('panel_number')
@@ -592,13 +614,36 @@ def upload_panel_image():
 def view_comic(comic_id):
     comic = Comic.query.get_or_404(comic_id)
     if comic.story.user_id != current_user.id:
-        flash("You do not have permission to view this comic.", "danger")
+        flash("You do not have permission.", "danger")
         return redirect(url_for('saved_stories_page'))
     
     panels = json.loads(comic.panels_content)
     return render_template('view_comic.html', panels=panels, title=comic.story.title, comic_id=comic.id, user=current_user)
 
-# --- OTHER ROUTES ---
+@app.route('/get-batch-prompt/<int:comic_id>')
+@login_required
+def get_batch_prompt(comic_id):
+    """Lấy lệnh Magic Prompt cho Midjourney (Dành cho User thường)"""
+    comic = Comic.query.get_or_404(comic_id)
+    panels = json.loads(comic.panels_content)
+    
+    style_prefix = "A single cinematic movie still, full screen digital art."
+    params_suffix = "--ar 3:2 --no text speech bubbles comic grid collage split-screen"
+
+    scenes_list = []
+    for p in panels:
+        # Lọc lấy nội dung chính của prompt
+        current_prompt = p['prompt']
+        core_content = current_prompt.replace(style_prefix, "").replace(params_suffix, "").strip()
+        scenes_list.append(core_content.replace(",", " ")) 
+
+    # Tạo cú pháp Permutation của Midjourney
+    scenes_block = ", ".join(scenes_list)
+    batch_prompt = f"/imagine prompt: {style_prefix} {{ {scenes_block} }} {params_suffix}"
+    return jsonify({"batch_prompt": batch_prompt})
+
+# --- ROUTES KHÁC (Styles, Save Story, Admin, etc.) ---
+
 @app.route('/styles')
 @login_required
 def styles_page(): return render_template('manage_styles.html', styles=Style.query.all(), user=current_user)
@@ -615,20 +660,19 @@ def add_style():
         if extracted_text:
             style_content = extracted_text
         else:
-            flash("Error reading file. Please upload valid .pdf or .docx", "danger")
+            flash("Error reading file.", "danger")
             return redirect(url_for('styles_page'))
 
     if not style_content.strip():
-        flash("Style content cannot be empty!", "warning")
+        flash("Content cannot be empty!", "warning")
         return redirect(url_for('styles_page'))
 
     try:
         db.session.add(Style(name=style_name, content=style_content))
         db.session.commit()
-        flash("Style added successfully!", "success")
+        flash("Style added!", "success")
     except Exception:
         flash("Style name already exists!", "danger")
-        
     return redirect(url_for('styles_page'))
 
 @app.route('/delete-style', methods=['POST'])
@@ -649,14 +693,12 @@ def saved_stories_page():
 @login_required
 def handle_save_story():
     content = request.form.get('story_content', '')
-    # --- MỚI: Lấy prompt_data từ form hidden ---
     prompt_data_str = request.form.get('prompt_data_json', '{}') 
     
     title = "Untitled"
-    first_line = content.strip().split('\n')[0]
-    if "#" in first_line: title = first_line.replace('#', '').strip()
+    if content:
+        title = content.strip().split('\n')[0].replace('#', '').strip() or "Untitled"
     
-    # Lưu vào database kèm prompt_data
     new_story = Story(title=title, content=content, user_id=current_user.id, prompt_data=prompt_data_str)
     db.session.add(new_story)
     db.session.commit()
@@ -703,13 +745,10 @@ def handle_translation():
 def add_quiz_to_saved():
     story = Story.query.get(request.form.get('story_id'))
     if not story or story.user_id != current_user.id: return redirect(url_for('saved_stories_page'))
-
+    
     quiz_type = request.form.get('quiz_type')
     api_key = configure_ai()
-    if not api_key:
-         flash(f"API Key missing!", "danger")
-         return redirect(url_for('saved_stories_page'))
-
+    
     try:
         prompt = create_quiz_only_prompt(story.content, quiz_type)
         quiz_content = generate_story_ai(api_key, prompt)
@@ -717,7 +756,7 @@ def add_quiz_to_saved():
         db.session.commit()
         flash(f"Added {quiz_type} quiz!", "success")
     except Exception as e:
-        flash(f"Error creating quiz: {e}", "danger")
+        flash(f"Error: {e}", "danger")
     return redirect(url_for('saved_stories_page'))
 
 @app.route('/send-feedback', methods=['POST'])
@@ -727,10 +766,11 @@ def send_feedback():
     if msg:
         db.session.add(Feedback(user_id=current_user.id, message=msg))
         db.session.commit()
-        flash("Feedback sent to Admin. Thank you!", "success")
+        flash("Feedback sent to Admin.", "success")
     return redirect(request.referrer)
 
-# --- ADMIN DASHBOARD PRO ---
+# --- ADMIN DASHBOARD ---
+
 @app.route('/admin/dashboard')
 @login_required
 def admin_dashboard():
@@ -747,7 +787,7 @@ def admin_reset_pass(user_id):
     if user:
         user.password_hash = generate_password_hash("123456")
         db.session.commit()
-        flash(f"Password for {user.username} reset to '123456'", "success")
+        flash(f"Password reset to 123456", "success")
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/toggle-lock/<int:user_id>', methods=['POST'])
@@ -757,9 +797,8 @@ def admin_toggle_lock(user_id):
     user = User.query.get(user_id)
     if user and user.username != 'admin':
         user.is_locked = not user.is_locked
-        status = "LOCKED" if user.is_locked else "UNLOCKED"
         db.session.commit()
-        flash(f"User {user.username} is now {status}", "warning")
+        flash(f"User locked/unlocked.", "warning")
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/delete/<int:user_id>', methods=['POST'])
@@ -771,13 +810,15 @@ def admin_delete_user(user_id):
         Story.query.filter_by(user_id=user.id).delete()
         db.session.delete(user)
         db.session.commit()
-        flash(f"User {user.username} deleted permanently.", "danger")
+        flash(f"User deleted.", "danger")
     return redirect(url_for('admin_dashboard'))
 
-# --- AUTO CREATE DB ---
+# --- AUTO CREATE DB & RUN APP ---
 with app.app_context():
     db.create_all()
 
 if __name__ == '__main__':
-    if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
+    # Kiểm tra xem có đang chạy trong môi trường debug hay không
+    if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+        webbrowser.open_new('http://127.0.0.1:5000/')
     app.run(debug=True, port=5000)
