@@ -280,24 +280,34 @@ def create_quiz_only_prompt(story_text, quiz_type):
 
 def create_comic_script_prompt(story_content):
     return f"""
-    **Role:** Professional Comic Book Director.
-    **Task:** Convert the story into a Comic Script JSON.
+    **Role:** Professional Art Director for a Silent Graphic Novel.
+    **Task:** Convert the story into a Visual Script JSON.
     **INPUT STORY:** {story_content}
     
-    **CRITICAL VISUAL STYLE (MUST APPLY TO ALL PANELS):**
-    - Style: **Flat 2D Vector Art**, Ligne Claire style (Tintin style), bright colors, clean bold outlines.
-    - **CHARACTER CONSISTENCY (IMPORTANT):**
-      - Main Character: **"A cute 4-year-old Vietnamese boy named Nhân, wearing a RED T-SHIRT and BLUE SHORTS, short black hair."** - (You MUST repeat this description "wearing a RED T-SHIRT and BLUE SHORTS" in EVERY panel prompt to keep him consistent).
-    - **NO TEXT IN IMAGE:**
-      - Absolutely **NO** speech bubbles, **NO** captions, **NO** character names, and **NO** text inside the visual image. The image should be pure visual art.
-    - **SAFETY GUIDELINES:**
-      - Do NOT use words like "terrified", "panic", "suffering", "hurt", "crying intensely" when describing the child.
-      - Instead use softer words: "looking surprised", "looking for mom", "sitting on the ground", "wide eyes".
-      - Describe the *storm* as chaotic, but keep the child safe in the visual description (e.g., "The wind blows leaves around him" instead of "The wind attacks him").
+    **CRITICAL VISUAL GUIDELINES (STRICT):**
+    1. **NO TEXT RULE:** The output images must be **100% TEXTLESS**. 
+       - NEVER use the words "Comic book", "Comic style", "Panel", or "Speech bubble" in the visual description. These words trigger text generation.
+       - INSTEAD USE: "Cinematic screenshot", "Wide angle photography", "3D render style", or "Book illustration".
+    
+    2. **ART STYLE:** - **Style:** Flat 2D Vector Art, Ligne Claire (Tintin style), vibrant colors, clean lines.
+       - **Format:** Each description MUST start with the exact phrase: **"Textless art, pure visual scene, no text, no speech bubbles. [Shot Type] of..."**
+
+    3. **CHARACTER CONSISTENCY:**
+       - Main Character: **"A cute 4-year-old Vietnamese boy named Nhân, wearing a RED T-SHIRT and BLUE SHORTS, short black hair."** - (REPEAT this exact character description in EVERY single panel prompt).
+
+    4. **SAFETY & CLARITY:**
+       - Describe physical actions (e.g., "The boy is looking at the sky") instead of abstract concepts (e.g., "The boy wonders about life").
+       - Keep the child safe (no scary or violent descriptions).
 
     **OUTPUT JSON FORMAT:**
     {{
-      "panels": [ {{ "panel_number": 1, "visual_description": "Comic book style: A wide shot... Nhân (wearing red t-shirt, blue shorts)...", "caption": "..." }} ],
+      "panels": [ 
+        {{ 
+            "panel_number": 1, 
+            "visual_description": "Textless art, pure visual scene, no text, no speech bubbles. Wide cinematic shot of a bustling Saigon market. Bright sunlight. In the center is a cute 4-year-old Vietnamese boy named Nhân (wearing a RED T-SHIRT and BLUE SHORTS)...", 
+            "caption": "Nhân is in a big market." 
+        }} 
+      ],
       "back_cover": {{ "summary": "...", "theme": "...", "level": "..." }}
     }}
     """
@@ -510,19 +520,21 @@ def create_comic_direct(story_id):
 
         final_panels = []
         for panel in panels_data:
+            # Lấy mô tả từ AI
+            raw_prompt = panel.get('visual_description') or panel.get('prompt')
+            
+            # --- BỔ SUNG: HARDCODE CHẶN CHỮ ---
+            # Thêm " --no text speech bubbles words letters" vào cuối prompt (cú pháp của Midjourney)
+            # Hoặc thêm "Textless image" vào đầu nếu chưa có.
+            clean_prompt = f"Textless, no speech bubbles. {raw_prompt} --no text letters words speech bubbles"
+            # ----------------------------------
+
             final_panels.append({
                 "panel_number": panel['panel_number'],
                 "image_url": "", 
-                "prompt": panel.get('visual_description') or panel.get('prompt'),
+                "prompt": clean_prompt, # Dùng prompt đã xử lý
                 "caption": panel.get('caption', '')
             })
-        
-        final_panels.append({
-            "panel_number": 999,
-            "image_url": "",
-            "prompt": "BACK_COVER_DATA",
-            "caption": json.dumps(back_cover)
-        })
 
         new_comic = Comic(story_id=story_id, panels_content=json.dumps(final_panels))
         db.session.add(new_comic)
