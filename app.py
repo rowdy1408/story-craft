@@ -215,7 +215,7 @@ def create_prompt_for_ai(inputs):
        - The **First Paragraph** MUST clearly introduce the **Main Character** and the **Setting/Context** immediately.
     
     2. **STORYTELLING:** - **Show, Don't Tell:** Instead of saying "He was sad", describe his actions.
-       - **Inner Monologue:** Show what the character is thinking/feeling.
+       - **Inner Monologue:** Show what the character is thinking/feeling. (Example: "This is a disaster," he thought)
        - **Dialogue:** Use natural conversation to advance the plot.
     
     3. **VOCABULARY INTEGRATION (Natural Flow):**
@@ -550,4 +550,5 @@ with app.app_context(): db.create_all()
 
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
+
     app.run(debug=True, port=5000)
