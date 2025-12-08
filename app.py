@@ -560,7 +560,40 @@ def admin_delete_user(user_id):
 
 with app.app_context(): db.create_all()
 
+@app.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    if request.method == 'POST':
+        username = request.form['username']
+        code = request.form['secret_code']
+        new_password = request.form['new_password']
+        
+        # 1. Kiểm tra mã bảo mật (Dùng chung mã với lúc đăng ký để đơn giản)
+        # Hoặc bạn có thể tạo biến môi trường mới tên là RESET_CODE
+        valid_codes = [
+            os.environ.get('REGISTRATION_CODE_BOSS'), 
+            os.environ.get('REGISTRATION_CODE_VIP')
+        ]
+        valid_codes = [c for c in valid_codes if c] # Lọc bỏ None
+
+        if code not in valid_codes:
+            flash('Invalid Secret Code provided.', 'danger')
+            return redirect(url_for('reset_password'))
+
+        # 2. Tìm user và đổi pass
+        user = User.query.filter_by(username=username).first()
+        if user:
+            user.password_hash = generate_password_hash(new_password)
+            db.session.commit()
+            flash('Password reset successfully! Please login.', 'success')
+            return redirect(url_for('login'))
+        else:
+            flash('Username not found.', 'danger')
+            return redirect(url_for('reset_password'))
+
+    return render_template('reset_password.html')
+
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
 
     app.run(debug=True, port=5000)  
+
