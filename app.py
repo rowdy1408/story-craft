@@ -378,38 +378,54 @@ def create_comic_direct(story_id):
     api_key = configure_ai()
     
     try:
-        # 1. Gọi AI để lấy kịch bản
+        # --- BƯỚC 1: LẤY THÔNG TIN NHÂN VẬT TỪ DỮ LIỆU CŨ ---
+        char_desc = "A relatable character"
+        try:
+            if story.prompt_data:
+                saved_inputs = json.loads(story.prompt_data)
+                # Lấy tên và đặc điểm nhân vật người dùng đã nhập
+                raw_char = saved_inputs.get('main_char', '')
+                if raw_char:
+                    # Mẹo: Thêm chi tiết quần áo cố định để AI không vẽ lung tung
+                    # Ví dụ: Luôn mặc áo phông trắng và quần jean
+                    char_desc = f"{raw_char}, distinct facial features, wearing a signature white t-shirt and blue shorts, same character design in all shots"
+        except:
+            pass
+
+        # --- BƯỚC 2: GỌI AI ĐỂ LẤY KỊCH BẢN (GIỮ NGUYÊN) ---
         ai_response_text = generate_story_ai(api_key, create_comic_script_prompt(story.content))
-        
-        # 2. Sử dụng hàm trích xuất mạnh mẽ thay vì regex đơn giản
         data = robust_json_extract(ai_response_text)
         
         if not data:
-            # Fallback: Nếu AI trả về lỗi hoặc text không parse được
-            print("AI Response Raw:", ai_response_text) # Log để debug trên Render
+            print("AI Response Raw:", ai_response_text)
             return jsonify({"error": "AI trả về dữ liệu không đúng định dạng JSON. Vui lòng thử lại."}), 500
 
-        # Xử lý trường hợp AI trả về key khác (đôi khi AI dùng "scenes" thay vì "panels")
         panels_data = data.get('panels', data.get('scenes', data))
-        
-        # Đảm bảo panels_data là một list
         if not isinstance(panels_data, list):
-             # Nếu AI trả về object đơn lẻ thay vì list, bọc nó lại
              if isinstance(panels_data, dict): panels_data = [panels_data]
-             else: return jsonify({"error": "Cấu trúc JSON không hợp lệ (cần danh sách panels)."}), 500
+             else: return jsonify({"error": "Cấu trúc JSON không hợp lệ."}), 500
 
         final_panels = []
 
-        # 3. Xử lý Prompt (Giữ nguyên logic cũ của bạn)
+        # --- BƯỚC 3: XỬ LÝ PROMPT - NHỒI "VISUAL ANCHOR" ---
         for panel in panels_data:
-            # Linh hoạt lấy key: visual_description HOẶC description HOẶC prompt
-            raw = panel.get('visual_description') or panel.get('description') or panel.get('prompt') or "A scene from the story"
+            raw = panel.get('visual_description') or panel.get('description') or panel.get('prompt') or "A scene"
             
             # Clean keywords
             for w in ["comic", "panel", "page", "grid", "speech bubble", "text"]: 
                 raw = raw.replace(w, "image")
             
-            final_prompt = f"A single cinematic movie still, full screen digital art. {raw} --ar 3:2 --no text speech bubbles comic grid collage"
+            # --- QUAN TRỌNG: Cấu trúc Prompt "Bánh Mì Kẹp Thịt" ---
+            # 1. Định nghĩa nhân vật (Cố định)
+            # 2. Hành động/Bối cảnh (Thay đổi theo từng panel)
+            # 3. Phong cách nghệ thuật (Cố định)
+            
+            final_prompt = (
+                f"**Character Design:** {char_desc}. "
+                f"**Action:** {raw}. "
+                f"**Style:** A single cinematic movie still, full screen digital art, Disney/Pixar style, 8k resolution, consistent character. "
+                f"--ar 3:2 --no text speech bubbles comic grid"
+            )
             
             final_panels.append({
                 "panel_number": panel.get('panel_number', len(final_panels) + 1),
@@ -621,6 +637,7 @@ if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
 
     app.run(debug=True, port=5000)  
+
 
 
 
