@@ -341,33 +341,43 @@ resultHTML = `
 function formatStoryHTML(text) {
     if (!text) return "";
 
-    // QUAN TRỌNG: Xóa sạch dấu backtick (`) do AI sinh ra
-    text = text.replace(/`/g, ''); 
+    // 1. Dọn dẹp sơ bộ
+    text = text.replace(/`/g, ''); // Xóa backtick rác
 
     const lines = text.split('\n');
     let html = '<div class="formatted-story-container">';
+    
+    let isFirstContentLine = true; // Cờ đánh dấu dòng đầu tiên
 
     lines.forEach(line => {
-        const trimmed = line.trim();
-        if (!trimmed) return;
+        let trimmed = line.trim();
+        if (!trimmed) return; // Bỏ qua dòng trống
 
-        if (trimmed.startsWith('#')) {
-            // Tiêu đề truyện
-            html += `<h1 class="story-title">${trimmed.replace(/^#\s*/, '')}</h1>`;
-        } 
-        else if (trimmed.toUpperCase().startsWith('CHAPTER') || trimmed.includes('Graded Definitions') || trimmed.startsWith('Story ')) {
-            // Tiêu đề chương (Xóa dấu #, xóa in đậm nếu có)
+        // 2. XỬ LÝ TIÊU ĐỀ (LUÔN LÀ DÒNG ĐẦU TIÊN)
+        if (isFirstContentLine) {
+            // Dù AI có viết # hay không, dòng đầu tiên luôn là Title
+            // Xóa các ký tự đặc biệt # hoặc * ở đầu nếu có để cho đẹp
+            let cleanTitle = trimmed.replace(/^[#*]+/, '').trim();
+            html += `<h1 class="story-title">${cleanTitle}</h1>`;
+            isFirstContentLine = false; // Đã xong tiêu đề, tắt cờ
+            return; // Chuyển sang dòng tiếp theo
+        }
+
+        // 3. XỬ LÝ CÁC PHẦN CÒN LẠI
+        if (trimmed.toUpperCase().startsWith('CHAPTER') || trimmed.includes('Graded Definitions') || trimmed.startsWith('Story ')) {
+            // Xử lý tiêu đề chương
             let chapterText = trimmed.replace(/^#+\s*/, '').replace(/\*\*/g, '');
             html += `<h2 class="story-chapter">${chapterText}</h2>`;
         } 
         else if (trimmed.startsWith('---')) {
+            // Dòng kẻ ngang
             html += `<hr style="margin: 30px 0; border-top: 2px dashed #ccc;">`;
-        }
+        } 
         else {
-            // Nội dung thường
+            // Nội dung truyện
             let content = trimmed.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
             
-            // Nếu là dòng định nghĩa (gạch đầu dòng) -> Không thụt đầu dòng
+            // Xử lý list từ vựng (dấu gạch đầu dòng)
             if (trimmed.startsWith('-')) {
                  html += `<p class="story-body" style="text-indent: 0 !important; margin-left: 20px;">${content}</p>`;
             } else {
@@ -382,6 +392,7 @@ function formatStoryHTML(text) {
     </script>
 
 {% endblock %}
+
 
 
 
