@@ -130,11 +130,9 @@
 
                                     <button type="button" class="btn btn-v btn-v-secondary" onclick="copyStoryContent('{{ story.id }}', this)" title="Copy to Clipboard"><i class="bi bi-clipboard"></i> Copy</button>
                                     
-                                    {% if '--- PAGE' in story.content %}
-                                        <button type="button" class="btn btn-v btn-v-comic" onclick="createComic('{{ story.id }}', this)">
-                                            <i class="bi bi-palette-fill"></i> Create Comic
-                                        </button>
-                                    {% endif %}
+                                    <button type="button" class="btn btn-v btn-v-comic" onclick="createComic('{{ story.id }}', this)">
+    <i class="bi bi-palette-fill"></i> Create Comic
+</button>
                                     
                                     {% if story.comics %}
                                         <a href="{{ url_for('view_comic', comic_id=story.comics[-1].id) }}" class="btn btn-v btn-v-view"><i class="bi bi-eye-fill"></i> View Comic PDF</a>
@@ -283,5 +281,6 @@
 </script>
 
 {% endblock %}
+
 
 
