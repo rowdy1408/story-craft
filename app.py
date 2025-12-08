@@ -176,13 +176,15 @@ CEFR_LEVEL_GUIDELINES = {
 
 # Trong file app.py, thay thế hàm create_prompt_for_ai cũ bằng đoạn này:
 
+# Tìm đến hàm create_prompt_for_ai và thay thế toàn bộ bằng đoạn này:
+
 def create_prompt_for_ai(inputs):
     cefr_level = inputs['level'].upper()
     vocab_list_str = ", ".join(inputs['vocab'])
     
     # 1. Setting Context
     setting_val = inputs['setting'].strip()
-    setting_instr = f"**SETTING:** {setting_val}" if setting_val else "**SETTING:** A realistic setting in Vietnam (e.g., Saigon street, Hanoi cafe, Da Lat). Atmosphere is key."
+    setting_instr = f"**SETTING:** {setting_val}" if setting_val else "**SETTING:** A realistic setting in Vietnam. Atmosphere is key."
 
     # 2. Logic Structure
     if cefr_level in ["PRE A1", "A1", "A2"]:
@@ -195,8 +197,8 @@ def create_prompt_for_ai(inputs):
     else:
         structure_instr = """
         **STRUCTURE: SHORT STORY**
-        - Divide into **3-5 CHAPTERS**. Label: `CHAPTER [X]: Title`
-        - **IMPORTANT:** The story must start immediately with **CHAPTER 1**. Do NOT write an introduction paragraph before Chapter 1.
+        - Divide into **3-5 CHAPTERS**. Label: `CHAPTER [X]: [Title]`
+        - **IMPORTANT:** The story must start immediately with **CHAPTER 1**. Do NOT write an introduction paragraph before Chapter 1. Introduce the character INSIDE Chapter 1.
         """
         repetition_rule = "Weave target words into the story naturally (approx 3-5 times each)."
 
@@ -214,13 +216,13 @@ def create_prompt_for_ai(inputs):
     **MANDATORY GUIDELINES:**
     
     1. **OPENING:** - Start with a **# Title**.
-       - Immediately follow with **CHAPTER 1** (or PAGE 1).
-       - Introduce the Main Character and Setting *inside* the first chapter/page.
+       - Immediately follow with **CHAPTER 1** (or PAGE 1). 
+       - Do NOT write any summary or intro text before Chapter 1.
     
-    2. **VOCABULARY INTEGRATION (CRITICAL):**
+    2. **VOCABULARY INTEGRATION (STRICT):**
        - **Target Words:** [{vocab_list_str}]
        - {repetition_rule}
-       - **STRICT RULE:** Do NOT use backticks (`), bold (**), quotes (""), or underlines to highlight target words. Write them exactly like normal text. Hidden integration is key.
+       - **FORBIDDEN:** Do NOT use backticks (`), bold (**), quotes (""), or underlines to highlight target words. Write them exactly like normal text.
     
     3. {setting_instr}
     4. {structure_instr}
@@ -230,12 +232,12 @@ def create_prompt_for_ai(inputs):
 
     **OUTPUT FORMAT:**
 
-    Creative Title
+    [Creative Title]
 
-    CHAPTER 1: Chapter Title
-    Story content starts here...
+    CHAPTER 1: [Chapter Title]
+    [Story content starts here...]
 
-    ...rest of the story...
+    [...rest of the story...]
 
     ---
     Graded Definitions ({cefr_level})
@@ -243,7 +245,7 @@ def create_prompt_for_ai(inputs):
     - word: definition.
     """
     return prompt
-
+    
 def create_comic_script_prompt(story_content):
     return f"""
     **Role:** Cinematic Art Director.
@@ -596,5 +598,6 @@ if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
 
     app.run(debug=True, port=5000)  
+
 
 
