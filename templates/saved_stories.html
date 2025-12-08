@@ -67,6 +67,7 @@
         .btn-v-delete { background-color: #ffab91; color: #bf360c; }
         .btn-v-delete:hover { background-color: #ff8a65; color: #bf360c; }
 
+        /* Quiz Box */
         .quiz-creator-box {
             background-color: #e0f2f1; border: 1px dashed #00897b;
             border-radius: 8px; padding: 5px 10px; margin-left: auto;
@@ -130,9 +131,13 @@
 
                                     <button type="button" class="btn btn-v btn-v-secondary" onclick="copyStoryContent('{{ story.id }}', this)" title="Copy to Clipboard"><i class="bi bi-clipboard"></i> Copy</button>
                                     
+                                    <button type="button" class="btn btn-v btn-v-secondary" onclick="printStory('{{ story.id }}', '{{ story.title | replace("'", "\\'") }}')" title="Export PDF">
+                                        <i class="bi bi-file-earmark-pdf"></i> PDF
+                                    </button>
+
                                     <button type="button" class="btn btn-v btn-v-comic" onclick="createComic('{{ story.id }}', this)">
-    <i class="bi bi-palette-fill"></i> Create Comic
-</button>
+                                        <i class="bi bi-palette-fill"></i> Create Comic
+                                    </button>
                                     
                                     {% if story.comics %}
                                         <a href="{{ url_for('view_comic', comic_id=story.comics[-1].id) }}" class="btn btn-v btn-v-view"><i class="bi bi-eye-fill"></i> View Comic PDF</a>
@@ -175,6 +180,55 @@
 
 {% block scripts %}
     <script>
+        // Hàm in truyện thành PDF (MỚI)
+        function printStory(storyId, storyTitle) {
+            // Lấy nội dung HTML đã được format
+            const contentDiv = document.getElementById(`story-content-${storyId}`);
+            if (!contentDiv) return;
+            const contentHTML = contentDiv.innerHTML;
+
+            // Mở cửa sổ in mới
+            const printWindow = window.open('', '_blank');
+            
+            // Viết nội dung vào cửa sổ mới với CSS chuẩn
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>${storyTitle}</title>
+                    <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Times+New+Roman&display=swap');
+                        body { 
+                            font-family: 'Times New Roman', serif; 
+                            padding: 40px; 
+                            max-width: 800px;
+                            margin: 0 auto;
+                        }
+                        /* Class format chuẩn của bạn */
+                        .story-title { font-size: 26pt; color: red; text-align: center; font-weight: bold; margin-bottom: 30px; line-height: 1.3; }
+                        .story-chapter { font-size: 20pt; color: black; text-align: center; font-weight: bold; margin-top: 40px; margin-bottom: 20px; }
+                        .story-body { font-size: 18pt; color: black; text-align: justify; text-indent: 50px; margin-bottom: 15px; line-height: 1.6; }
+                        
+                        /* Ẩn các nút khi in */
+                        @media print {
+                            @page { margin: 20mm; size: A4; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${contentHTML}
+                    <script>
+                        // Tự động gọi lệnh in khi tải xong
+                        window.onload = function() { 
+                            window.print(); 
+                            // window.close(); // Bỏ comment nếu muốn tự đóng sau khi in
+                        }
+                    <\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+
         async function copyStoryContent(storyId, buttonElement) {
             const contentElement = document.getElementById(`story-content-${storyId}`);
             if (!contentElement) { console.error('Could not find content for ID:', storyId); return; }
@@ -211,76 +265,58 @@
                 btn.disabled = false;
             }
         }
-    </script>
 
-<script>
-    // Hàm format (copy lại cho chắc chắn)
-    function formatStoryHTML(text) {
-    if (!text) return "";
+        // Hàm format nội dung thông minh
+        function formatStoryHTML(text) {
+            if (!text) return "";
+            text = text.replace(/`/g, ''); // Clean backticks
 
-    // 1. Dọn dẹp sơ bộ
-    text = text.replace(/`/g, ''); // Xóa backtick rác
-
-    const lines = text.split('\n');
-    let html = '<div class="formatted-story-container">';
-    
-    let isFirstContentLine = true; // Cờ đánh dấu dòng đầu tiên
-
-    lines.forEach(line => {
-        let trimmed = line.trim();
-        if (!trimmed) return; // Bỏ qua dòng trống
-
-        // 2. XỬ LÝ TIÊU ĐỀ (LUÔN LÀ DÒNG ĐẦU TIÊN)
-        if (isFirstContentLine) {
-            // Dù AI có viết # hay không, dòng đầu tiên luôn là Title
-            // Xóa các ký tự đặc biệt # hoặc * ở đầu nếu có để cho đẹp
-            let cleanTitle = trimmed.replace(/^[#*]+/, '').trim();
-            html += `<h1 class="story-title">${cleanTitle}</h1>`;
-            isFirstContentLine = false; // Đã xong tiêu đề, tắt cờ
-            return; // Chuyển sang dòng tiếp theo
-        }
-
-        // 3. XỬ LÝ CÁC PHẦN CÒN LẠI
-        if (trimmed.toUpperCase().startsWith('CHAPTER') || trimmed.includes('Graded Definitions') || trimmed.startsWith('Story ')) {
-            // Xử lý tiêu đề chương
-            let chapterText = trimmed.replace(/^#+\s*/, '').replace(/\*\*/g, '');
-            html += `<h2 class="story-chapter">${chapterText}</h2>`;
-        } 
-        else if (trimmed.startsWith('---')) {
-            // Dòng kẻ ngang
-            html += `<hr style="margin: 30px 0; border-top: 2px dashed #ccc;">`;
-        } 
-        else {
-            // Nội dung truyện
-            let content = trimmed.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+            const lines = text.split('\n');
+            let html = '<div class="formatted-story-container">';
             
-            // Xử lý list từ vựng (dấu gạch đầu dòng)
-            if (trimmed.startsWith('-')) {
-                 html += `<p class="story-body" style="text-indent: 0 !important; margin-left: 20px;">${content}</p>`;
-            } else {
-                 html += `<p class="story-body">${content}</p>`;
-            }
+            let isFirstContentLine = true; // Cờ dòng đầu tiên
+
+            lines.forEach(line => {
+                let trimmed = line.trim();
+                if (!trimmed) return;
+
+                // 1. Dòng đầu tiên luôn là Tiêu đề Đỏ
+                if (isFirstContentLine) {
+                    let cleanTitle = trimmed.replace(/^[#*]+/, '').trim();
+                    html += `<h1 class="story-title">${cleanTitle}</h1>`;
+                    isFirstContentLine = false;
+                    return;
+                }
+
+                // 2. Các phần khác
+                if (trimmed.toUpperCase().startsWith('CHAPTER') || trimmed.includes('Graded Definitions') || trimmed.startsWith('Story ')) {
+                    let chapterText = trimmed.replace(/^#+\s*/, '').replace(/\*\*/g, '');
+                    html += `<h2 class="story-chapter">${chapterText}</h2>`;
+                } 
+                else if (trimmed.startsWith('---')) {
+                    html += `<hr style="margin: 30px 0; border-top: 2px dashed #ccc;">`;
+                } 
+                else {
+                    let content = trimmed.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+                    if (trimmed.startsWith('-')) {
+                         html += `<p class="story-body" style="text-indent: 0 !important; margin-left: 20px;">${content}</p>`;
+                    } else {
+                         html += `<p class="story-body">${content}</p>`;
+                    }
+                }
+            });
+
+            html += '</div>';
+            return html;
         }
-    });
 
-    html += '</div>';
-    return html;
-}
-
-    // Tự động chạy khi mở trang thư viện để format lại các truyện cũ
-    document.addEventListener("DOMContentLoaded", function() {
-        // Lấy tất cả các div chứa nội dung truyện
-        const storyDivs = document.querySelectorAll('.story-reader-view');
-        
-        storyDivs.forEach(div => {
-            const rawText = div.innerText; // Lấy text thô
-            div.innerHTML = formatStoryHTML(rawText); // Chuyển thành HTML đẹp
-            div.classList.remove('story-reader-view'); // Xóa class cũ nếu muốn
+        document.addEventListener("DOMContentLoaded", function() {
+            const storyDivs = document.querySelectorAll('.story-reader-view');
+            storyDivs.forEach(div => {
+                const rawText = div.innerText;
+                div.innerHTML = formatStoryHTML(rawText);
+                div.classList.remove('story-reader-view');
+            });
         });
-    });
-</script>
-
+    </script>
 {% endblock %}
-
-
-
