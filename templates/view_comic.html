@@ -4,198 +4,155 @@
 
 {% block styles %}
 <style>
-    /* --- WEB MODE (GIỮ NGUYÊN) --- */
-    body { background-color: #f8f9fa; }
-    .studio-container { max-width: 1200px; margin: 30px auto; }
-    .master-prompt-box { background: #e3f2fd; border: 1px solid #90caf9; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
-    .panel-row { background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 30px; overflow: hidden; display: flex; flex-wrap: wrap; }
-    .panel-info { flex: 1; padding: 30px; min-width: 350px; border-right: 1px solid #eee; }
-    .prompt-box { background: #f1f3f5; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 0.9rem; color: #444; margin-bottom: 15px; border: 1px dashed #ced4da; cursor: pointer; word-break: break-word; }
-    .caption-text { font-family: 'Georgia', serif; font-size: 1.2rem; color: #0d3b66; font-style: italic; margin-top: 10px; }
-    .panel-preview { flex: 1; min-width: 350px; background-color: #212529; position: relative; min-height: 400px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-    .comic-image { max-width: 100%; max-height: 100%; object-fit: contain; }
-    .url-input-overlay { width: 80%; text-align: center; }
+    /* --- WEB MODE --- */
+    body { background-color: #f0f2f5; scroll-behavior: smooth; }
+    .studio-container { max-width: 1200px; margin: 30px auto; padding-bottom: 100px; }
+    
+    /* STICKY TOOLBAR (THANH CÔNG CỤ NỔI) */
+    .sticky-toolbar {
+        position: sticky; top: 20px; z-index: 1000;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 16px;
+        padding: 15px 25px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        border: 1px solid rgba(255,255,255,0.5);
+        margin-bottom: 40px;
+        display: flex; justify-content: space-between; align-items: center;
+        transition: all 0.3s ease;
+    }
+    .sticky-toolbar.collapsed { transform: translateY(-150%); }
+    
+    .char-badge {
+        background: #e3f2fd; color: #0d47a1; 
+        padding: 5px 12px; border-radius: 20px; 
+        font-size: 0.85rem; font-weight: bold; border: 1px solid #bbdefb;
+        cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 5px;
+    }
+    .char-badge:hover { background: #bbdefb; }
+
+    /* PANEL DESIGN */
+    .panel-row { 
+        background: #fff; border-radius: 20px; 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02); 
+        margin-bottom: 40px; overflow: hidden; display: flex; flex-wrap: wrap; 
+        border: 1px solid #f0f0f0;
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .panel-row.active-step {
+        border: 2px solid #f1c40f;
+        box-shadow: 0 15px 40px rgba(241, 196, 15, 0.15);
+        transform: scale(1.01);
+    }
+    
+    .panel-info { 
+        flex: 1; padding: 40px; min-width: 350px; border-right: 1px solid #f8f9fa; 
+        display: flex; flex-direction: column;
+    }
+    
+    /* PROMPT BOX */
+    .prompt-container { position: relative; margin-bottom: 20px; }
+    .prompt-box { 
+        background: #f8f9fa; padding: 20px; padding-right: 60px;
+        border-radius: 12px; font-family: 'Courier New', monospace; font-size: 0.95rem; color: #444; 
+        border: 1px solid #e9ecef; line-height: 1.6;
+        cursor: pointer;
+    }
+    .prompt-box:hover { background: #fff; border-color: #d35400; }
+    
+    .btn-copy-prompt {
+        position: absolute; top: 10px; right: 10px;
+        border: none; background: white; color: #555;
+        width: 40px; height: 40px; border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        display: flex; align-items: center; justify-content: center;
+        transition: all 0.2s; font-size: 1.2rem;
+    }
+    .btn-copy-prompt:hover { background: #d35400; color: white; transform: translateY(-2px); }
+
+    .caption-text { 
+        font-family: 'Georgia', serif; font-size: 1.3rem; color: #2c3e50; 
+        font-style: italic; margin-top: auto; padding-top: 20px; border-top: 2px dashed #f0f0f0;
+    }
+    
+    /* IMAGE AREA */
+    .panel-preview { 
+        flex: 1; min-width: 350px; background-color: #1a1a1a; position: relative; 
+        min-height: 450px; display: flex; flex-direction: column; justify-content: center; align-items: center; 
+        background-image: radial-gradient(#333 1px, transparent 1px); background-size: 30px 30px;
+    }
+    .comic-image { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    
+    .upload-zone {
+        text-align: center; color: rgba(255,255,255,0.7);
+        border: 2px dashed rgba(255,255,255,0.2); padding: 30px; border-radius: 16px;
+        transition: 0.3s; width: 80%;
+    }
+    .upload-zone:hover { background: rgba(255,255,255,0.05); border-color: #f1c40f; color: #fff; }
+
+    /* UTILS */
     .d-none { display: none !important; }
     .d-block { display: block !important; }
     .print-cover-page, .print-back-cover { display: none; }
 
-    /* --- PRINT MODE (FIXED RATIO & SAFE SCALE) --- */
+    /* --- PRINT MODE --- */
     @media print {
-        /* 1. THIẾT LẬP KHỔ GIẤY VÀ XÓA LỀ MẶC ĐỊNH */
-        @page { 
-            size: A4 landscape; 
-            margin: 0 !important; /* Bắt buộc: Xóa lề trắng của trình duyệt */
-        }
-
-        /* 2. CẤU HÌNH BODY ĐỂ IN NHIỀU TRANG */
-        html, body {
-            width: 297mm; /* Cố định chiều rộng A4 ngang */
-            height: auto !important; /* QUAN TRỌNG: Để chiều cao tự động giãn ra các trang sau */
-            margin: 0 !important; 
-            padding: 0 !important; 
-            background-color: white !important;
-            overflow: visible !important; /* Cho phép nội dung tràn xuống trang dưới */
-            display: block !important; /* Đảm bảo flow dòng chảy thông thường, không dùng flex ở body */
-        }
-
-        /* Ẩn UI Web */
-        nav, .btn, .alert, .master-prompt-box, .url-input-overlay, .prompt-box, label, .edit-btn, h1, .no-image-print, .badge, span.badge, .back-cover-data-row, .studio-container > div:first-child { display: none !important; }
-        
-        .studio-container { 
-            width: 100% !important; 
-            margin: 0 !important; 
-            padding: 0 !important; 
-            max-width: none !important; 
-            display: block !important; 
-        }
-
-        /* --- 3. CẤU HÌNH TỪNG TRANG (BÌA, NỘI DUNG, BÌA SAU) --- */
-        .print-cover-page, .panel-row, .print-back-cover {
-            width: 297mm !important; 
-            height: 210mm !important; /* Chiều cao chuẩn A4 */
-            
-            /* NGẮT TRANG: Bắt buộc để nhảy trang sau khi in xong thẻ này */
-            break-after: page !important;
-            page-break-after: always !important;
-            page-break-inside: avoid !important;
-            
-            /* Layout Flex để căn giữa NỘI DUNG bên trong từng trang */
-            display: flex !important;
-            flex-direction: column;
-            justify-content: center; 
-            align-items: center;    
-            
-            margin: 0 !important; 
-            padding: 0 !important;
-            position: relative;
-            left: 0 !important; /* Đảm bảo bám sát lề trái */
-        }
-
-        /* --- 4. TINH CHỈNH BÌA TRƯỚC --- */
-        .print-cover-page {
-            background-color: #0d3b66 !important; 
-            color: white !important;
-            border: 15px solid #fdf6e3; 
-            box-sizing: border-box !important; /* Tính viền vào kích thước tổng */
-        }
-        
-        /* Div bao quanh nội dung để căn giữa tuyệt đối */
-        .cover-content-wrapper {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            width: 100%; 
-            margin-top: 20px; /* Bù trừ cho cái top-bar */
-        }
-
-        .cover-top-bar {
-            background-color: #f1c40f; color: #0d3b66; padding: 10px 40px;
-            font-weight: bold; text-transform: uppercase; letter-spacing: 2px;
-            border-radius: 0 0 15px 15px; font-family: sans-serif;
-            position: absolute; top: 0; 
-            z-index: 10;
-        }
-
-        .print-cover-title { 
-            font-size: 3.5rem; font-weight: bold; text-align: center; 
-            margin-bottom: 20px; line-height: 1.1; font-family: 'Playfair Display', serif;
-            text-shadow: 3px 3px 0px #000; max-width: 90%;
-        }
-        
-        .cover-image-container {
-            width: 50%; height: 110mm; /* Cố định chiều cao ảnh bìa */
-            background-color: #fff; border: 5px solid #f1c40f;
-            display: flex; align-items: center; justify-content: center; overflow: hidden;
-            margin-bottom: 20px;
-        }
+        @page { size: A4 landscape; margin: 0 !important; }
+        html, body { width: 297mm; height: auto !important; margin: 0 !important; padding: 0 !important; background-color: white !important; overflow: visible !important; display: block !important; }
+        .sticky-toolbar, nav, .btn, .alert, .master-prompt-box, .upload-zone, .prompt-box, label, .edit-btn, h1, .no-image-print, .badge, span.badge, .back-cover-data-row, .studio-container > div:first-child, .btn-copy-prompt { display: none !important; }
+        .studio-container { width: 100% !important; margin: 0 !important; padding: 0 !important; max-width: none !important; display: block !important; }
+        .print-cover-page, .panel-row, .print-back-cover { width: 297mm !important; height: 210mm !important; break-after: page !important; page-break-after: always !important; page-break-inside: avoid !important; display: flex !important; flex-direction: column; justify-content: center; align-items: center; margin: 0 !important; padding: 0 !important; position: relative; left: 0 !important; border-radius: 0 !important; box-shadow: none !important; border: none !important; }
+        /* (Giữ nguyên CSS in ấn cũ của bạn ở đây nếu cần chi tiết hơn) */
+        .print-cover-page { background-color: #0d3b66 !important; color: white !important; border: 15px solid #fdf6e3 !important; box-sizing: border-box !important; }
+        .cover-content-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; margin-top: 20px; }
+        .print-cover-title { font-size: 3.5rem; font-weight: bold; text-align: center; }
+        .cover-image-container { width: 50%; height: 110mm; background-color: #fff; border: 5px solid #f1c40f; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 20px; }
         .cover-image-img { width: 100%; height: 100%; object-fit: cover; }
-        .print-cover-subtitle { font-size: 1.2rem; font-style: italic; opacity: 0.9; }
-
-        /* --- 5. TINH CHỈNH TRANG NỘI DUNG --- */
-        .panel-row { 
-            background: white !important; 
-            border: none !important; 
-            /* Padding an toàn: Trên/Dưới 10mm, Trái/Phải 20mm để không bị sát mép giấy */
-            padding: 10mm 20mm !important; 
-            box-sizing: border-box !important;
-        }
-        
-        .panel-preview { 
-            order: 1; width: 100%; height: 65%; /* Ảnh chiếm 65% */
-            display: flex; align-items: center; justify-content: center; 
-            background: none !important; border: none !important; margin-bottom: 10px;
-        }
-        .comic-image { 
-            max-width: 95%; max-height: 100%; /* Giảm nhẹ max-width để tránh bị cắt lề */
-            object-fit: contain; 
-            border: 3px solid #333 !important; box-shadow: 5px 5px 0px #eee;
-        }
-        
-        .panel-info { 
-            order: 2; width: 100%; height: 25%; 
-            text-align: center; border: 2px solid #333 !important; 
-            background-color: #fff9c4 !important; padding: 15px !important; 
-            border-radius: 12px; display: flex; align-items: center; justify-content: center;
-        }
-        .caption-text { 
-            font-size: 16pt; line-height: 1.3; color: #000; 
-            font-family: 'Comic Neue', cursive, sans-serif; font-weight: bold; 
-        }
-        .page-number-print { 
-            position: absolute; bottom: 5mm; 
-            font-size: 10pt; color: #aaa; 
-        }
-
-        /* --- 6. BÌA SAU --- */
-        .print-back-cover {
-            background-color: #fdf6e3 !important; color: #333 !important;
-            padding: 40px !important; border: 15px solid #0d3b66;
-            box-sizing: border-box !important;
-            justify-content: space-between;
-        }
+        .panel-preview { order: 1; width: 100%; height: 65%; background: none !important; border: none !important; }
+        .comic-image { max-width: 95%; max-height: 100%; border: 3px solid #333 !important; }
+        .panel-info { order: 2; width: 100%; height: 25%; border: 2px solid #333 !important; background-color: #fff9c4 !important; padding: 15px !important; border-radius: 12px; }
+        .caption-text { font-size: 16pt; line-height: 1.3; color: #000; border: none !important; }
+        .page-number-print { position: absolute; bottom: 5mm; font-size: 10pt; color: #aaa; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container studio-container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>🎨 Comic Studio: {{ title }}</h1>
+    
+    <div class="sticky-toolbar" id="stickyToolbar">
+        <div class="d-flex align-items-center gap-3">
+            <h5 class="mb-0 text-primary fw-bold"><i class="bi bi-magic"></i> Comic Studio</h5>
+            <div class="vr mx-2"></div>
+            <a href="https://gemini.google.com/app" target="_blank" class="btn btn-sm btn-outline-dark rounded-pill">
+                <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg" width="16" height="16"> Open Gemini
+            </a>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <span class="text-muted small d-none d-md-inline">Character Identity:</span>
+            <div class="char-badge" onclick="copyCharDesc()" title="Copy Character Description Only">
+                <i class="bi bi-person-bounding-box"></i> <span id="char-desc-preview">Loading...</span>
+            </div>
+        </div>
+        
         <div>
-            <button onclick="window.print()" class="btn btn-success me-2"><i class="bi bi-printer"></i> Print Book (PDF)</button>
-            <a href="{{ url_for('saved_stories_page') }}" class="btn btn-secondary">Back</a>
+            <button onclick="window.print()" class="btn btn-success btn-sm rounded-pill"><i class="bi bi-printer"></i> Export PDF</button>
+            <a href="{{ url_for('saved_stories_page') }}" class="btn btn-secondary btn-sm rounded-pill">Exit</a>
         </div>
     </div>
 
+    <input type="hidden" id="full-char-desc" value="">
+
     <div class="print-cover-page">
-        <div class="cover-top-bar">Graded Readers Library</div>
-        
         <div class="cover-content-wrapper"> 
             <div class="print-cover-title">{{ title }}</div>
-            
             <div class="cover-image-container">
                 {% if panels|length > 0 and panels[0].image_url %}
                     <img src="{{ panels[0].image_url }}" class="cover-image-img">
-                {% else %}
-                    <div style="color: #0d3b66; text-align: center;">
-                        <i class="bi bi-image" style="font-size: 3rem;"></i>
-                        <p>Cover Image (Panel 1)<br>Not uploaded yet</p>
-                    </div>
                 {% endif %}
             </div>
-
-            <div class="print-cover-subtitle">Written & Illustrated by Story Craft Press</div>
-        </div>
-        </div>
-
-    <div class="master-prompt-box">
-        <h5><i class="bi bi-lightning-charge-fill"></i> Batch Generation Prompts</h5>
-        <p class="mb-2">Copy these prompts to Midjourney/DALL-E to generate images.</p>
-        <button class="btn btn-primary" onclick="copyMasterPrompt()">Copy All Prompts</button>
-        <div id="master-prompt-content" style="display:none;">
-            {% for panel in panels %}
-                {% if panel.panel_number != 999 %}
--- Panel {{ panel.panel_number }}: {{ panel.prompt }}
-                {% endif %}
-            {% endfor %}
+            <div class="print-cover-subtitle">Created with Story Weaver</div>
         </div>
     </div>
 
@@ -205,25 +162,43 @@
         {% if panel.panel_number == 999 %}
             <div class="back-cover-data-row d-none"><span id="back-data-json">{{ panel.caption }}</span></div>
         {% else %}
-            <div class="panel-row">
+            <div class="panel-row" id="panel-row-{{ loop.index }}">
                 <div class="panel-info">
-                    <span class="badge bg-secondary mb-2">PANEL {{ panel.panel_number }}</span>
-                    <div class="prompt-box" data-prompt="{{ panel.prompt }}" onclick="copyToClipboard(this.dataset.prompt, this)">
-                        {{ panel.prompt }}
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge bg-warning text-dark shadow-sm">PANEL {{ panel.panel_number }}</span>
+                        {% if loop.index > 1 %}
+                            <small class="text-muted fst-italic"><i class="bi bi-arrow-up-circle"></i> Use previous image as ref!</small>
+                        {% endif %}
                     </div>
-                    <div class="caption-text">{{ panel.caption | replace('"', '') }}</div> 
+                    
+                    <div class="prompt-container">
+                        <div class="prompt-box" id="prompt-text-{{ loop.index }}" onclick="copyToClipboard(this.innerText, document.getElementById('btn-copy-{{ loop.index }}'))">
+                            {{ panel.prompt }}
+                        </div>
+                        <button class="btn-copy-prompt" id="btn-copy-{{ loop.index }}" onclick="copyToClipboard(document.getElementById('prompt-text-{{ loop.index }}').innerText, this)" title="Copy Prompt">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
                     </div>
+
+                    <div class="caption-text">
+                        <i class="bi bi-chat-quote-fill opacity-25"></i> {{ panel.caption | replace('"', '') }}
+                    </div> 
+                </div>
 
                 <div class="panel-preview">
                     <img src="{{ panel.image_url or '' }}" id="img-{{ loop.index }}" class="comic-image {{ 'd-block' if panel.image_url else 'd-none' }}">
                     
-                    <div class="url-input-overlay {{ 'd-none' if panel.image_url else 'd-block' }}" id="input-group-{{ loop.index }}">
-                        <input type="file" class="form-control mb-2" id="file-input-{{ loop.index }}" accept="image/*">
-                        <button class="btn btn-primary w-100" onclick="uploadImage('{{ loop.index }}', '{{ panel.panel_number }}', this)">Upload & Save</button>
+                    <div class="upload-zone {{ 'd-none' if panel.image_url else 'd-block' }}" id="input-group-{{ loop.index }}">
+                        <div class="mb-3">
+                            <i class="bi bi-cloud-arrow-up display-4"></i>
+                            <p class="mt-2 mb-0">Drop image here or click</p>
+                        </div>
+                        <input type="file" class="form-control mb-2" id="file-input-{{ loop.index }}" accept="image/*" onchange="uploadImage('{{ loop.index }}', '{{ panel.panel_number }}', this)">
                     </div>
-                    <button class="btn btn-sm btn-light position-absolute top-0 end-0 m-2 edit-btn {{ 'd-block' if panel.image_url else 'd-none' }}" 
+                    
+                    <button class="btn btn-sm btn-light position-absolute top-0 end-0 m-3 edit-btn {{ 'd-block' if panel.image_url else 'd-none' }}" 
                             id="btn-edit-{{ loop.index }}" onclick="reEditImage('{{ loop.index }}')">
-                        <i class="bi bi-pencil"></i>
+                        <i class="bi bi-pencil-square"></i> Change
                     </button>
                 </div>
                 <div class="page-number-print">- {{ loop.index }} -</div>
@@ -233,19 +208,8 @@
 
     <div class="print-back-cover">
         <div class="back-cover-header"><div class="series-title">Story Craft Graded Readers</div></div>
-        <div class="back-cover-body">
-            <div class="back-cover-summary" id="print-summary">Loading summary...</div>
-            <div class="info-grid">
-                <div class="info-item"><strong>Theme:</strong> <span id="print-theme">...</span></div>
-                <div class="info-item"><strong>CEFR Level:</strong> <span id="print-level">...</span></div>
-                <div class="info-item"><strong>Word Count:</strong> ~150 words</div>
-                <div class="info-item"><strong>Genre:</strong> Fiction</div>
-            </div>
-        </div>
-        <div class="back-cover-footer">
-            <div class="publisher-logo"><i class="bi bi-book-half"></i> Story Craft Press</div>
-            <div class="barcode"></div>
-        </div>
+        <div class="back-cover-body"><div class="back-cover-summary" id="print-summary">Summary...</div></div>
+        <div class="back-cover-footer"><div class="publisher-logo">Story Craft Press</div></div>
     </div>
 </div>
 {% endblock %}
@@ -253,110 +217,108 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const dataSpan = document.getElementById('back-data-json');
-        if (dataSpan) {
-            try {
-                const data = JSON.parse(dataSpan.innerText);
-                document.getElementById('print-summary').innerText = data.summary || "A wonderful story waiting for you.";
-                document.getElementById('print-theme').innerText = data.theme || "General";
-                document.getElementById('print-level').innerText = data.level || "Beginner";
-            } catch (e) { console.error("Back cover data error", e); }
+        // 1. Tự động lấy Character Description từ Panel 1 để đưa lên thanh công cụ
+        const firstPrompt = document.getElementById('prompt-text-1');
+        if (firstPrompt) {
+            const text = firstPrompt.innerText;
+            // Regex để bắt đoạn text giữa **[1] CHARACTER:** và **[2]
+            const match = text.match(/\*\*\[1\] CHARACTER:\*\*(.*?)\*\*\[2\]/);
+            if (match && match[1]) {
+                const charDesc = match[1].trim();
+                document.getElementById('full-char-desc').value = charDesc;
+                // Hiển thị đoạn ngắn gọn (cắt bớt nếu dài quá)
+                document.getElementById('char-desc-preview').innerText = charDesc.substring(0, 30) + "...";
+            } else {
+                document.getElementById('char-desc-preview').innerText = "Main Character";
+                document.getElementById('full-char-desc').value = "Main Character";
+            }
         }
     });
 
-    function copyMasterPrompt() {
-        const text = document.getElementById('master-prompt-content').innerText;
-        navigator.clipboard.writeText(text).then(() => alert("Prompts Copied!"));
+    function copyCharDesc() {
+        const text = document.getElementById('full-char-desc').value;
+        navigator.clipboard.writeText(text).then(() => alert("Character info copied! Paste this if AI forgets the face."));
     }
 
-    function copyToClipboard(text, element) {
+    function copyToClipboard(text, btnElement) {
+        text = text.trim();
         navigator.clipboard.writeText(text).then(() => {
-            const originalBg = element.style.backgroundColor;
-            element.style.backgroundColor = "#d4edda"; 
-            setTimeout(() => element.style.backgroundColor = originalBg, 500);
+            const originalIcon = btnElement.innerHTML;
+            btnElement.innerHTML = '<i class="bi bi-check-lg"></i>';
+            btnElement.classList.add('bg-success', 'text-white');
+            
+            setTimeout(() => { 
+                btnElement.innerHTML = originalIcon; 
+                btnElement.classList.remove('bg-success', 'text-white');
+            }, 1000);
         });
     }
 
-    // --- HÀM UPLOAD ĐÃ ĐƯỢC SỬA LỖI ---
-    async function uploadImage(loopIndex, panelNum, btnElement) {
-        // Debug: Kiểm tra xem nút bấm có nhận đúng index không
-        console.log("Uploading for loop index:", loopIndex, "Panel Num:", panelNum);
+    // --- HÀM UPLOAD THÔNG MINH ---
+    async function uploadImage(loopIndex, panelNum, fileInput) {
+        if (!fileInput || !fileInput.files[0]) return;
 
-        const fileInput = document.getElementById(`file-input-${loopIndex}`);
-        const btn = btnElement;
-
-        if (!fileInput) {
-            alert(`Error: Cannot find file input for index ${loopIndex}`);
-            return;
-        }
-
-        const file = fileInput.files[0];
-        if (!file) { 
-            alert("Please select an image file first!"); 
-            return; 
-        }
-
-        // Hiệu ứng Loading
-        const originalText = btn.innerText;
-        btn.innerText = "Uploading...";
-        btn.disabled = true;
+        const container = document.getElementById(`input-group-${loopIndex}`);
+        const originalContent = container.innerHTML;
+        container.innerHTML = '<div class="spinner-border text-light"></div><div class="mt-2">Uploading...</div>';
 
         const comicId = document.getElementById('comic_id').value;
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', fileInput.files[0]);
         formData.append('comic_id', comicId);
         formData.append('panel_number', panelNum);
 
         try {
             const res = await fetch('/upload-panel-image', { method: 'POST', body: formData });
-            
-            if (!res.ok) throw new Error("Upload failed on server");
-            
             const data = await res.json();
+            
             if (data.url) {
-                // Tìm các phần tử giao diện tương ứng để cập nhật
+                // 1. Hiển thị ảnh
                 const img = document.getElementById(`img-${loopIndex}`);
-                const inputGroup = document.getElementById(`input-group-${loopIndex}`);
                 const editBtn = document.getElementById(`btn-edit-${loopIndex}`);
                 
-                // Hiển thị ảnh mới
-                // Thêm tham số timestamp để tránh cache trình duyệt
-                img.src = data.url + "?t=" + new Date().getTime(); 
+                img.src = data.url + "?t=" + new Date().getTime();
+                img.classList.remove('d-none'); img.classList.add('d-block');
+                container.classList.remove('d-block'); container.classList.add('d-none');
+                editBtn.classList.remove('d-none'); editBtn.classList.add('d-block');
+
+                // 2. LOGIC TỰ ĐỘNG CUỘN VÀ NHẮC NHỞ (SMART FLOW)
+                const nextIndex = parseInt(loopIndex) + 1;
+                const nextRow = document.getElementById(`panel-row-${nextIndex}`);
                 
-                img.classList.remove('d-none'); 
-                img.classList.add('d-block');
-                
-                // Ẩn ô upload, hiện nút edit
-                inputGroup.classList.remove('d-block'); 
-                inputGroup.classList.add('d-none');
-                
-                editBtn.classList.remove('d-none'); 
-                editBtn.classList.add('d-block');
+                if (nextRow) {
+                    // Highlight Panel tiếp theo
+                    document.querySelectorAll('.panel-row').forEach(r => r.classList.remove('active-step'));
+                    nextRow.classList.add('active-step');
+                    
+                    // Cuộn xuống mượt mà
+                    nextRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                    // Thông báo Toast (Optional - dùng alert cho đơn giản hoặc custom toast)
+                    // Ở đây mình dùng hiệu ứng visual focus vào panel tiếp theo là đủ tinh tế.
+                }
+
             } else { 
-                alert("Upload failed: " + (data.error || "Unknown error")); 
+                alert("Upload failed: " + data.error); 
+                container.innerHTML = originalContent; // Reset nếu lỗi
             }
         } catch (e) { 
-            console.error(e);
-            alert("Error uploading image. Check console for details."); 
-        } finally {
-            // Trả lại trạng thái nút bấm
-            btn.innerText = originalText;
-            btn.disabled = false;
+            console.error(e); 
+            alert("Error uploading");
+            container.innerHTML = originalContent;
         }
     }
 
     function reEditImage(loopIndex) {
-        const img = document.getElementById(`img-${loopIndex}`);
-        const inputGroup = document.getElementById(`input-group-${loopIndex}`);
-        const editBtn = document.getElementById(`btn-edit-${loopIndex}`);
-        
-        // Ẩn ảnh, hiện lại ô upload
-        img.classList.add('d-none');
-        editBtn.classList.add('d-none');
-        inputGroup.classList.remove('d-none');
-        inputGroup.classList.add('d-block');
+        document.getElementById(`img-${loopIndex}`).classList.add('d-none');
+        document.getElementById(`btn-edit-${loopIndex}`).classList.add('d-none');
+        const ig = document.getElementById(`input-group-${loopIndex}`);
+        ig.classList.remove('d-none'); ig.classList.add('d-block');
+        // Reset nội dung input file để có thể chọn lại file cũ
+        const fileInput = document.getElementById(`file-input-${loopIndex}`);
+        fileInput.value = ''; 
+        // Khôi phục giao diện upload
+        ig.innerHTML = `<div class="mb-3"><i class="bi bi-cloud-arrow-up display-4"></i><p class="mt-2 mb-0">Drop image here or click</p></div><input type="file" class="form-control mb-2" id="file-input-${loopIndex}" accept="image/*" onchange="uploadImage('${loopIndex}', '${document.getElementById(`panel-row-${loopIndex}`).querySelector('.badge').innerText.replace('PANEL ', '')}', this)">`;
     }
 </script>
-
 {% endblock %}
-
