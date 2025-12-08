@@ -174,6 +174,8 @@ CEFR_LEVEL_GUIDELINES = {
     "C2": "Sophisticated style, Implicit meaning, Cultural references, Irony/Humor."
 }
 
+# Trong file app.py, thay thế hàm create_prompt_for_ai cũ bằng đoạn này:
+
 def create_prompt_for_ai(inputs):
     cefr_level = inputs['level'].upper()
     vocab_list_str = ", ".join(inputs['vocab'])
@@ -182,23 +184,23 @@ def create_prompt_for_ai(inputs):
     setting_val = inputs['setting'].strip()
     setting_instr = f"**SETTING:** {setting_val}" if setting_val else "**SETTING:** A realistic setting in Vietnam (e.g., Saigon street, Hanoi cafe, Da Lat). Atmosphere is key."
 
-    # 2. Logic Structure (Book vs Page)
+    # 2. Logic Structure
     if cefr_level in ["PRE A1", "A1", "A2"]:
         structure_instr = """
-        **STRUCTURE: PICTURE BOOK (Visual Focus)**
+        **STRUCTURE: PICTURE BOOK**
         - Divide into **8-10 'PAGES'**. Label: `--- PAGE [X] ---`
-        - Content per page: 2-3 sentences max. Clear action.
+        - Start immediately with PAGE 1.
         """
         repetition_rule = "Repeat target words 3-4 times naturally."
     else:
         structure_instr = """
-        **STRUCTURE: SHORT STORY (Narrative Focus)**
-        - Divide into **3-5 CHAPTERS**. Label: `CHAPTER [X]: [Title]`
-        - Focus on flow, paragraphing, and dialogue.
+        **STRUCTURE: SHORT STORY**
+        - Divide into **3-5 CHAPTERS**. Label: `CHAPTER [X]: Title`
+        - **IMPORTANT:** The story must start immediately with **CHAPTER 1**. Do NOT write an introduction paragraph before Chapter 1.
         """
         repetition_rule = "Weave target words into the story naturally (approx 3-5 times each)."
 
-    # 3. Master Prompt - NATURAL FLOW & CONSISTENCY
+    # 3. Master Prompt
     prompt = f"""
     **Role:** Best-selling Author of Graded Readers.
     **Goal:** Write a story that is engaging, emotional, and educational.
@@ -211,36 +213,34 @@ def create_prompt_for_ai(inputs):
     
     **MANDATORY GUIDELINES:**
     
-    1. **STRONG OPENING (Context):** - The story **MUST** start with a **Title** (format: Title).
-       - The **First Paragraph** MUST clearly introduce the **Main Character** and the **Setting/Context** immediately.
+    1. **OPENING:** - Start with a **# Title**.
+       - Immediately follow with **CHAPTER 1** (or PAGE 1).
+       - Introduce the Main Character and Setting *inside* the first chapter/page.
     
-    2. **STORYTELLING:** - **Show, Don't Tell:** Instead of saying "He was sad", describe his actions.
-       - **Inner Monologue:** Show what the character is thinking/feeling. (Example: "This is a disaster," he thought)
-       - **Dialogue:** Use natural conversation to advance the plot.
-    
-    3. **VOCABULARY INTEGRATION (Natural Flow):**
+    2. **VOCABULARY INTEGRATION (CRITICAL):**
        - **Target Words:** [{vocab_list_str}]
        - {repetition_rule}
-       - **IMPORTANT:** Do NOT bold, underline, or highlight the target words. Keep it looking like a real book.
+       - **STRICT RULE:** Do NOT use backticks (`), bold (**), quotes (""), or underlines to highlight target words. Write them exactly like normal text. Hidden integration is key.
     
-    4. {setting_instr}
+    3. {setting_instr}
+    4. {structure_instr}
     
-    5. {structure_instr}
-    
-    6. **GRAMMAR & TONE:** - Follow {CEFR_LEVEL_GUIDELINES.get(cefr_level, "Standard")} grammar rules.
+    5. **GRAMMAR & TONE:** - Level: {cefr_level}.
        - Tone: Encouraging, Relatable, Human.
 
     **OUTPUT FORMAT:**
 
-    # [Creative Title]
+    Creative Title
 
-    [STORY CONTENT HERE]
+    CHAPTER 1: Chapter Title
+    Story content starts here...
+
+    ...rest of the story...
 
     ---
     Graded Definitions ({cefr_level})
-    *Provide clear definitions for the target vocabulary ({vocab_list_str}). IMPORTANT: The definition language must be suitable for {cefr_level} learners (simple and clear).*
     *Format:*
-    -word: definition.
+    - word: definition.
     """
     return prompt
 
@@ -596,4 +596,5 @@ if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
 
     app.run(debug=True, port=5000)  
+
 
