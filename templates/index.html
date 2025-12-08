@@ -297,7 +297,7 @@
                                     <span class="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-success fs-6 shadow">
                                         <i class="bi bi-check-circle-fill"></i> Story Generated
                                     </span>
-                                    <div class="mt-4" style="font-family: 'Georgia', serif; font-size: 1.15rem; line-height: 1.8; color: #2c3e50; white-space: pre-wrap;">${escapeHTML(storyContent)}</div>
+                                    <div class="mt-4" style="font-family: 'Georgia', serif; font-size: 1.15rem; line-height: 1.8; color: #2c3e50; white-space: pre-wrap;"${formatStoryHTML(storyContent)}</div>
                                     <hr class="my-4">
                                     <form action="{{ url_for('handle_save_story') }}" method="POST" class="text-end">
                                         <input type="hidden" name="story_content" value="${escapeHTML(storyContent)}">
@@ -330,5 +330,37 @@
                 }); 
             }
         });
+
+        // Hàm chuyển đổi văn bản thường thành HTML có style xịn
+function formatStoryHTML(text) {
+    if (!text) return "";
+    const lines = text.split('\n');
+    let html = '<div class="formatted-story-container">';
+
+    lines.forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return; // Bỏ qua dòng trống
+
+        // Logic nhận diện từng phần:
+        if (trimmed.startsWith('#')) {
+            // Nếu dòng bắt đầu bằng # -> Là Tiêu đề truyện
+            html += `<h1 class="story-title">${trimmed.replace(/^#\s*/, '')}</h1>`;
+        } 
+        else if (trimmed.toUpperCase().startsWith('CHAPTER') || trimmed.includes('Graded Definitions') || trimmed.startsWith('Story ')) {
+            // Nếu là Chapter hoặc phần Định nghĩa -> Style Chapter
+            html += `<h2 class="story-chapter">${trimmed.replace(/\*\*/g, '')}</h2>`;
+        } 
+        else {
+            // Các dòng còn lại -> Style nội dung thường
+            // Xử lý in đậm (nếu có) để không bị mất
+            let content = trimmed.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+            html += `<p class="story-body">${content}</p>`;
+        }
+    });
+
+    html += '</div>';
+    return html;
+}
     </script>
+
 {% endblock %}
