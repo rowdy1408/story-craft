@@ -334,27 +334,42 @@
         // Hàm chuyển đổi văn bản thường thành HTML có style xịn
 function formatStoryHTML(text) {
     if (!text) return "";
+
+    // 1. CLEANUP: Xóa sạch dấu backtick (`) do AI sinh ra
+    text = text.replace(/`/g, ''); 
+
     const lines = text.split('\n');
     let html = '<div class="formatted-story-container">';
 
     lines.forEach(line => {
         const trimmed = line.trim();
-        if (!trimmed) return; // Bỏ qua dòng trống
+        if (!trimmed) return;
 
-        // Logic nhận diện từng phần:
         if (trimmed.startsWith('#')) {
-            // Nếu dòng bắt đầu bằng # -> Là Tiêu đề truyện
+            // Tiêu đề truyện (Times New Roman, 26pt, Đỏ, Giữa)
             html += `<h1 class="story-title">${trimmed.replace(/^#\s*/, '')}</h1>`;
         } 
         else if (trimmed.toUpperCase().startsWith('CHAPTER') || trimmed.includes('Graded Definitions') || trimmed.startsWith('Story ')) {
-            // Nếu là Chapter hoặc phần Định nghĩa -> Style Chapter
-            html += `<h2 class="story-chapter">${trimmed.replace(/\*\*/g, '')}</h2>`;
+            // Tiêu đề chương (Times New Roman, 20pt, Đen, Giữa)
+            // Xóa dấu # nếu AI lỡ thêm vào (VD: ### CHAPTER 1)
+            let chapterText = trimmed.replace(/^#+\s*/, '').replace(/\*\*/g, '');
+            html += `<h2 class="story-chapter">${chapterText}</h2>`;
         } 
+        else if (trimmed.startsWith('---')) {
+            // Dòng ngăn cách (nếu có)
+            html += `<hr style="margin: 30px 0; border-top: 2px dashed #ccc;">`;
+        }
         else {
-            // Các dòng còn lại -> Style nội dung thường
-            // Xử lý in đậm (nếu có) để không bị mất
+            // Nội dung (Times New Roman, 18pt, Đen, Trái, Thụt đầu dòng)
+            // Vẫn giữ in đậm (bằng thẻ <b>) nếu có, nhưng backtick đã bị xóa ở trên
             let content = trimmed.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-            html += `<p class="story-body">${content}</p>`;
+            
+            // Xử lý dòng Graded Definition (không thụt đầu dòng, căn trái thẳng)
+            if (trimmed.startsWith('-')) {
+                 html += `<p class="story-body" style="text-indent: 0 !important; margin-left: 20px;">${content}</p>`;
+            } else {
+                 html += `<p class="story-body">${content}</p>`;
+            }
         }
     });
 
@@ -364,3 +379,4 @@ function formatStoryHTML(text) {
     </script>
 
 {% endblock %}
+
