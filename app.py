@@ -127,39 +127,41 @@ def generate_story_ai(api_key, prompt):
 
 def robust_json_extract(text):
     """
-    Cố gắng trích xuất JSON từ phản hồi của AI, xử lý cả trường hợp
-    có Markdown code blocks (```json ... ```) hoặc text thường.
+    Trích xuất JSON từ phản hồi AI, xử lý mạnh mẽ các lỗi cú pháp thường gặp.
     """
     try:
-        # 1. Thử tìm khối code Markdown trước (chính xác nhất)
-        code_block_pattern = r"```(?:json)?\s*(\{.*?\})\s*```"
-        match = re.search(code_block_pattern, text, re.DOTALL)
-        
-        json_str = ""
+        # 1. Ưu tiên tìm trong thẻ code block ```json ... ``` hoặc ``` ... ```
+        # Sử dụng regex linh hoạt hơn để bắt nội dung bên trong
+        match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.DOTALL)
         if match:
-            json_str = match.group(1)
-        else:
-            # 2. Nếu không có markdown, tìm cặp ngoặc nhọn {} bao quanh nội dung lớn nhất
-            # Tìm dấu { đầu tiên
-            start_idx = text.find('{')
-            # Tìm dấu } cuối cùng
-            end_idx = text.rfind('}')
-            
-            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-                json_str = text[start_idx : end_idx + 1]
-            else:
-                return None # Không tìm thấy cấu trúc JSON
-
-        # 3. Làm sạch các lỗi cú pháp phổ biến của AI
-        # Xóa comments kiểu // (nếu có)
-        json_str = re.sub(r'//.*', '', json_str)
-        # Fix lỗi dấu phẩy thừa cuối danh sách/object (ví dụ: {"a": 1,} -> {"a": 1})
-        json_str = re.sub(r',\s*([\]}])', r'\1', json_str)
+            text = match.group(1)
         
-        return json.loads(json_str)
+        # 2. Nếu không có code block, tìm cặp ngoặc { } hoặc [ ] bao quanh nội dung lớn nhất
+        else:
+            # Tìm vị trí bắt đầu của { hoặc [
+            start_match = re.search(r"[\{\[]", text)
+            if start_match:
+                start_idx = start_match.start()
+                # Tìm vị trí kết thúc của } hoặc ]
+                end_idx = max(text.rfind('}'), text.rfind(']'))
+                
+                if end_idx > start_idx:
+                    text = text[start_idx : end_idx + 1]
+            else:
+                return None # Không tìm thấy cấu trúc JSON nào
+
+        # 3. Vệ sinh dữ liệu (Clean common AI errors)
+        # Xóa comments kiểu // ... (nếu có)
+        text = re.sub(r'//.*', '', text)
+        # Fix lỗi dấu phẩy thừa cuối danh sách/object (ví dụ: {"a": 1,} -> {"a": 1})
+        text = re.sub(r',\s*([\]}])', r'\1', text)
+        
+        return json.loads(text)
         
     except Exception as e:
         print(f"JSON Parsing Error: {e}")
+        # In ra một phần text để debug nếu chạy local
+        print(f"Failed Text Snippet: {text[:200]}...") 
         return None
     
 # --- 4. ADVANCED PROMPT ENGINEERING (UPDATED) ---
@@ -260,19 +262,29 @@ def create_prompt_for_ai(inputs):
 def create_comic_script_prompt(story_content):
     return f"""
     **Role:** Cinematic Art Director.
-    **Task:** Create 12 distinct visual descriptions for Single Movie Screenshots based on the story.
+    **Task:** Convert the story below into a list of 12 visual descriptions for image generation.
     **INPUT STORY:** {story_content}
     
     **VISUAL RULES:**
-    - **Format:** Single full-screen image description. NO "comic panels", NO "split screens".
-    - **Style:** "Disney/Pixar 3D style or 2D Vector Art (Ligne Claire), vibrant colors."
-    - **Character Consistency:** "A cute 4-year-old Vietnamese boy named Nhân (RED T-SHIRT, BLUE SHORTS)."
-    - **Safety:** Child is PHYSICALLY SAFE. Drama is in the environment (wind, rain).
+    - **Style:** Disney/Pixar 3D style, vibrant colors, expressive lighting.
+    - **Consistency:** Use specific descriptions (e.g., "A 4-year-old Vietnamese boy named Nhan, wearing a blue t-shirt").
+    - **Content:** Create visuals that match the emotional tone of the story.
 
-    **OUTPUT JSON:**
+    **OUTPUT FORMAT (STRICT JSON ONLY):**
+    Return a valid JSON object. Do not add any introductory text or markdown formatting outside the JSON.
+    
     {{
       "panels": [ 
-        {{ "panel_number": 1, "visual_description": "Cinematic wide shot...", "caption": "..." }} 
+        {{ 
+            "panel_number": 1, 
+            "visual_description": "Detailed description of the scene for AI image generator...", 
+            "caption": "Short text from the story for this page" 
+        }},
+        {{ 
+            "panel_number": 2, 
+            "visual_description": "...", 
+            "caption": "..." 
+        }}
       ]
     }}
     """
@@ -609,6 +621,7 @@ if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
 
     app.run(debug=True, port=5000)  
+
 
 
 
