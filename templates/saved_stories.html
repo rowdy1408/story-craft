@@ -218,24 +218,49 @@
 <script>
     // Hàm format (copy lại cho chắc chắn)
     function formatStoryHTML(text) {
-        if (!text) return "";
-        const lines = text.split('\n');
-        let html = '<div class="formatted-story-container">';
-        lines.forEach(line => {
-            const trimmed = line.trim();
-            if (!trimmed) return;
-            if (trimmed.startsWith('#')) {
-                html += `<h1 class="story-title">${trimmed.replace(/^#\s*/, '')}</h1>`;
-            } else if (trimmed.toUpperCase().startsWith('CHAPTER') || trimmed.includes('Graded Definitions') || trimmed.startsWith('Story ')) {
-                html += `<h2 class="story-chapter">${trimmed.replace(/\*\*/g, '')}</h2>`;
+    if (!text) return "";
+
+    // 1. CLEANUP: Xóa sạch dấu backtick (`) do AI sinh ra
+    text = text.replace(/`/g, ''); 
+
+    const lines = text.split('\n');
+    let html = '<div class="formatted-story-container">';
+
+    lines.forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+
+        if (trimmed.startsWith('#')) {
+            // Tiêu đề truyện (Times New Roman, 26pt, Đỏ, Giữa)
+            html += `<h1 class="story-title">${trimmed.replace(/^#\s*/, '')}</h1>`;
+        } 
+        else if (trimmed.toUpperCase().startsWith('CHAPTER') || trimmed.includes('Graded Definitions') || trimmed.startsWith('Story ')) {
+            // Tiêu đề chương (Times New Roman, 20pt, Đen, Giữa)
+            // Xóa dấu # nếu AI lỡ thêm vào (VD: ### CHAPTER 1)
+            let chapterText = trimmed.replace(/^#+\s*/, '').replace(/\*\*/g, '');
+            html += `<h2 class="story-chapter">${chapterText}</h2>`;
+        } 
+        else if (trimmed.startsWith('---')) {
+            // Dòng ngăn cách (nếu có)
+            html += `<hr style="margin: 30px 0; border-top: 2px dashed #ccc;">`;
+        }
+        else {
+            // Nội dung (Times New Roman, 18pt, Đen, Trái, Thụt đầu dòng)
+            // Vẫn giữ in đậm (bằng thẻ <b>) nếu có, nhưng backtick đã bị xóa ở trên
+            let content = trimmed.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+            
+            // Xử lý dòng Graded Definition (không thụt đầu dòng, căn trái thẳng)
+            if (trimmed.startsWith('-')) {
+                 html += `<p class="story-body" style="text-indent: 0 !important; margin-left: 20px;">${content}</p>`;
             } else {
-                let content = trimmed.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-                html += `<p class="story-body">${content}</p>`;
+                 html += `<p class="story-body">${content}</p>`;
             }
-        });
-        html += '</div>';
-        return html;
-    }
+        }
+    });
+
+    html += '</div>';
+    return html;
+}
 
     // Tự động chạy khi mở trang thư viện để format lại các truyện cũ
     document.addEventListener("DOMContentLoaded", function() {
@@ -251,3 +276,4 @@
 </script>
 
 {% endblock %}
+
