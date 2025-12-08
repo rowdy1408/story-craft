@@ -219,7 +219,7 @@
                     
                     <div class="url-input-overlay {{ 'd-none' if panel.image_url else 'd-block' }}" id="input-group-{{ loop.index }}">
                         <input type="file" class="form-control mb-2" id="file-input-{{ loop.index }}" accept="image/*">
-                        <button class="btn btn-primary w-100" onclick="uploadImage('{{ loop.index }}', '{{ panel.panel_number }}')">Upload & Save</button>
+                        <button class="btn btn-primary w-100" onclick="uploadImage('{{ loop.index }}', '{{ panel.panel_number }}', this)">Upload & Save</button>
                     </div>
                     <button class="btn btn-sm btn-light position-absolute top-0 end-0 m-2 edit-btn {{ 'd-block' if panel.image_url else 'd-none' }}" 
                             id="btn-edit-{{ loop.index }}" onclick="reEditImage('{{ loop.index }}')">
@@ -283,7 +283,7 @@
         console.log("Uploading for loop index:", loopIndex, "Panel Num:", panelNum);
 
         const fileInput = document.getElementById(`file-input-${loopIndex}`);
-        const btn = event.target; // Lấy nút đang bấm để tạo hiệu ứng loading
+        const btn = btnElement;
 
         if (!fileInput) {
             alert(`Error: Cannot find file input for index ${loopIndex}`);
@@ -357,4 +357,5 @@
         inputGroup.classList.add('d-block');
     }
 </script>
+
 {% endblock %}
