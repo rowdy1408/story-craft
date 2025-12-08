@@ -287,9 +287,14 @@ def login():
         
         if user and user.is_locked:
             flash('Locked.', 'danger'); return render_template('login.html')
-        if user and user.username.lower() == 'admin' and admin_pin != "25121509":
-            flash('Wrong PIN.', 'danger'); return render_template('login.html')
-            
+        
+        # --- ĐOẠN MỚI THÊM VÀO ---
+        if user and user.username.lower() == 'admin':
+            system_pin_hash = os.environ.get('ADMIN_PIN_HASH')
+            if not system_pin_hash or not check_password_hash(system_pin_hash, admin_pin):
+                flash('Wrong PIN.', 'danger'); return render_template('login.html')
+        # -------------------------
+
         if user and check_password_hash(user.password_hash, password):
             login_user(user); return redirect(url_for('index'))
         flash('Invalid login.', 'danger')
@@ -301,7 +306,14 @@ def register():
         username = request.form['username']
         password = request.form['password']
         code = request.form.get('secret_code')
-        if code not in ["BOSS_ONLY_999", "GV_VIP_2025"]: return redirect(url_for('register'))
+        valid_codes = [
+            os.environ.get('REGISTRATION_CODE_BOSS'), 
+            os.environ.get('REGISTRATION_CODE_VIP')
+        ]
+        # Lọc bỏ giá trị None nếu chưa cấu hình env
+        valid_codes = [c for c in valid_codes if c] 
+        
+        if code not in valid_codes: return redirect(url_for('register'))
         if username.lower() == 'admin' and code != "BOSS_ONLY_999": return redirect(url_for('register'))
         if User.query.filter_by(username=username).first(): return redirect(url_for('register'))
         
@@ -551,4 +563,4 @@ with app.app_context(): db.create_all()
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
 
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5000)  
