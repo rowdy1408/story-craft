@@ -335,7 +335,7 @@
 function formatStoryHTML(text) {
     if (!text) return "";
 
-    // 1. CLEANUP: Xóa sạch dấu backtick (`) do AI sinh ra
+    // QUAN TRỌNG: Xóa sạch dấu backtick (`) do AI sinh ra
     text = text.replace(/`/g, ''); 
 
     const lines = text.split('\n');
@@ -346,25 +346,22 @@ function formatStoryHTML(text) {
         if (!trimmed) return;
 
         if (trimmed.startsWith('#')) {
-            // Tiêu đề truyện (Times New Roman, 26pt, Đỏ, Giữa)
+            // Tiêu đề truyện
             html += `<h1 class="story-title">${trimmed.replace(/^#\s*/, '')}</h1>`;
         } 
         else if (trimmed.toUpperCase().startsWith('CHAPTER') || trimmed.includes('Graded Definitions') || trimmed.startsWith('Story ')) {
-            // Tiêu đề chương (Times New Roman, 20pt, Đen, Giữa)
-            // Xóa dấu # nếu AI lỡ thêm vào (VD: ### CHAPTER 1)
+            // Tiêu đề chương (Xóa dấu #, xóa in đậm nếu có)
             let chapterText = trimmed.replace(/^#+\s*/, '').replace(/\*\*/g, '');
             html += `<h2 class="story-chapter">${chapterText}</h2>`;
         } 
         else if (trimmed.startsWith('---')) {
-            // Dòng ngăn cách (nếu có)
             html += `<hr style="margin: 30px 0; border-top: 2px dashed #ccc;">`;
         }
         else {
-            // Nội dung (Times New Roman, 18pt, Đen, Trái, Thụt đầu dòng)
-            // Vẫn giữ in đậm (bằng thẻ <b>) nếu có, nhưng backtick đã bị xóa ở trên
+            // Nội dung thường
             let content = trimmed.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
             
-            // Xử lý dòng Graded Definition (không thụt đầu dòng, căn trái thẳng)
+            // Nếu là dòng định nghĩa (gạch đầu dòng) -> Không thụt đầu dòng
             if (trimmed.startsWith('-')) {
                  html += `<p class="story-body" style="text-indent: 0 !important; margin-left: 20px;">${content}</p>`;
             } else {
@@ -379,4 +376,5 @@ function formatStoryHTML(text) {
     </script>
 
 {% endblock %}
+
 
