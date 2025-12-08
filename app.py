@@ -182,42 +182,55 @@ def create_prompt_for_ai(inputs):
     cefr_level = inputs['level'].upper()
     vocab_list_str = ", ".join(inputs['vocab'])
     
+    # Xử lý số lượng từ để quyết định cấu trúc
+    try:
+        word_count = int(inputs['count'])
+    except:
+        word_count = 250 # Mặc định nếu lỗi
+        
     # 1. Setting Context
     setting_val = inputs['setting'].strip()
     setting_instr = f"**SETTING:** {setting_val}" if setting_val else "**SETTING:** A realistic setting in Vietnam. Atmosphere is key."
 
-    # 2. Logic Structure
-    if cefr_level in ["PRE A1", "A1", "A2"]:
+    # 2. Logic Structure (Xử lý thông minh hơn)
+    if word_count < 400:
+        # --- TRUYỆN NGẮN (Flash Fiction) ---
+        structure_type = "SHORT STORY (Continuous)"
         structure_instr = """
-        **STRUCTURE: PICTURE BOOK**
-        - Divide into **8-10 'PAGES'**. Label: `--- PAGE [X] ---`
-        - Start immediately with PAGE 1.
+        **STRUCTURE: CONTINUOUS STORY**
+        - Do NOT use Chapter headings (e.g., NO 'Chapter 1').
+        - Start directly with the story content after the Title.
+        - Organize into clear paragraphs.
         """
-        repetition_rule = "Repeat target words 3-4 times naturally."
+        opening_rule = "Start with a **# Title**. Then immediately start the story text. No intro, no chapter headers."
     else:
+        # --- TRUYỆN DÀI (Chapter Book) ---
+        structure_type = "CHAPTER BOOK"
         structure_instr = """
-        **STRUCTURE: SHORT STORY**
-        - Divide into **3-5 CHAPTERS**. Label: `CHAPTER [X]: [Title]`
-        - **IMPORTANT:** The story must start immediately with **CHAPTER 1**. Do NOT write an introduction paragraph before Chapter 1. Introduce the character INSIDE Chapter 1.
+        **STRUCTURE: CHAPTERS**
+        - Divide into **3-5 CHAPTERS**. Label: `### CHAPTER [X]: [Title]`
+        - **IMPORTANT:** The story must start immediately with **CHAPTER 1**.
         """
-        repetition_rule = "Weave target words into the story naturally (approx 3-5 times each)."
+        opening_rule = "Start with a **Title**. Immediately follow with **CHAPTER 1**. Introduce the character INSIDE Chapter 1."
+
+    # Quy tắc lặp từ
+    repetition_rule = "Weave target words into the story naturally (approx 3-5 times each)."
 
     # 3. Master Prompt
     prompt = f"""
     **Role:** Best-selling Author of Graded Readers.
-    **Goal:** Write a story that is engaging, emotional, and educational.
+    **Goal:** Write a {structure_type} that is engaging, emotional, and educational.
     
     **CORE INPUTS:**
     - Level: {cefr_level}
-    - Length: ~{inputs['count']} words.
+    - Length: ~{word_count} words.
     - Theme: {inputs['theme']}
     - Main Character: {inputs.get('main_char', 'A relatable character')}
     
     **MANDATORY GUIDELINES:**
     
-    1. **OPENING:** - Start with a **# Title**.
-       - Immediately follow with **CHAPTER 1** (or PAGE 1). 
-       - Do NOT write any summary or intro text before Chapter 1.
+    1. **OPENING & STRUCTURE:** - {opening_rule}
+       - {structure_instr}
     
     2. **VOCABULARY INTEGRATION (STRICT):**
        - **Target Words:** [{vocab_list_str}]
@@ -225,19 +238,17 @@ def create_prompt_for_ai(inputs):
        - **FORBIDDEN:** Do NOT use backticks (`), bold (**), quotes (""), or underlines to highlight target words. Write them exactly like normal text.
     
     3. {setting_instr}
-    4. {structure_instr}
     
-    5. **GRAMMAR & TONE:** - Level: {cefr_level}.
+    4. **GRAMMAR & TONE:** - Level: {cefr_level}.
        - Tone: Encouraging, Relatable, Human.
 
     **OUTPUT FORMAT:**
 
     [Creative Title]
 
-    CHAPTER 1: [Chapter Title]
-    [Story content starts here...]
+    [Depending on structure, either 'CHAPTER 1:...' or start story text directly]
 
-    [...rest of the story...]
+    [Story content...]
 
     ---
     Graded Definitions ({cefr_level})
@@ -598,6 +609,7 @@ if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
 
     app.run(debug=True, port=5000)  
+
 
 
 
