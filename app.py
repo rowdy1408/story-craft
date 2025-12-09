@@ -149,6 +149,17 @@ def robust_json_extract(text):
     
 # --- 4. ADVANCED PROMPT ENGINEERING ---
 
+# [ĐÃ KHÔI PHỤC] Bảng hướng dẫn CEFR bị mất
+CEFR_LEVEL_GUIDELINES = {
+    "PRE A1": "Simple Present (be/have/action). Short sentences (3-6 words). Focus on visual actions.",
+    "A1": "Present Simple/Continuous. Basic conjunctions (and, but). Dialogues are simple Q&A.",
+    "A2": "Past Simple, Future (will/going to). Adverbs of frequency. Coordinated sentences.",
+    "B1": "Narrative tenses (Past Continuous), Conditionals (1 & 2), Reasons (because/so). Expressing feelings/opinions.",
+    "B2": "Passive voice, Reported speech, Relative clauses. Nuanced vocabulary and abstract ideas.",
+    "C1": "Complex sentence structures, Inversion, Idiomatic expressions. Literary tone.",
+    "C2": "Sophisticated style, Implicit meaning, Cultural references, Irony/Humor."
+}
+
 def create_prompt_for_ai(inputs):
     cefr_level = inputs['level'].upper()
     vocab_list_str = ", ".join(inputs['vocab'])
@@ -178,7 +189,7 @@ def create_prompt_for_ai(inputs):
         - Divide into **3-5 CHAPTERS**. Label: `### CHAPTER [X]: [Title]`
         - **IMPORTANT:** The story must start immediately with **CHAPTER 1**.
         """
-        opening_rule = "Start with a **# Title**. Immediately follow with **CHAPTER 1**. Introduce the character INSIDE Chapter 1."
+        opening_rule = "Start with a **Title**. Immediately follow with **CHAPTER 1**. Introduce the character INSIDE Chapter 1."
 
     repetition_rule = "Weave target words into the story naturally (approx 3-5 times each)."
 
@@ -204,12 +215,12 @@ def create_prompt_for_ai(inputs):
     
     3. {setting_instr}
     
-    4. **GRAMMAR & TONE:** - Level: {cefr_level}.
-       - Tone: Encouraging, Relatable, Human.
+    4. **GRAMMAR & TONE:** - **Grammar Level:** {CEFR_LEVEL_GUIDELINES.get(cefr_level, "Standard grammar")}
+       - **Tone:** Encouraging, Relatable, Human.
 
     **OUTPUT FORMAT:**
 
-    # [Creative Title]
+    [Creative Title]
 
     [Story content...]
 
