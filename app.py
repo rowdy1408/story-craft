@@ -284,6 +284,8 @@ def create_prompt_for_ai(inputs):
        {negative_instr}
        {style_instr}
 
+    6.**LANGUAGE:** Write in standard English. Use English terms for family members (Mom, Dad, Grandma) unless strictly instructed otherwise.
+
     **OUTPUT FORMAT:**
 
     # [Creative Title]
@@ -798,6 +800,7 @@ def reset_password():
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
     app.run(debug=True, port=5000)
+
 
 
 
