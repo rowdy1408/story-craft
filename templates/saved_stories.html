@@ -280,14 +280,11 @@
             let trimmed = line.trim();
             if (!trimmed) return;
 
-            // LỌC RÁC: Bỏ qua mấy câu chào hỏi vô nghĩa của AI
-            if (trimmed.startsWith("Of course") || trimmed.startsWith("Here is") || trimmed.startsWith("Sure,")) {
-                return;
-            }
+            // Bỏ qua câu chào của AI
+            if (trimmed.startsWith("Of course") || trimmed.startsWith("Here is")) return;
 
-            // 1. Dòng đầu tiên -> Tiêu đề truyện (H1 Đỏ)
+            // 1. Tiêu đề truyện (Dòng đầu)
             if (isFirstContentLine && !trimmed.startsWith('#')) {
-                // Nếu dòng đầu không phải header markdown (có thể là title truyện), cho làm Title luôn
                 html += `<h1 class="story-title">${trimmed}</h1>`;
                 isFirstContentLine = false;
                 return;
@@ -299,13 +296,10 @@
                  return;
             }
 
-            // 2. XỬ LÝ WORD BANK (Cái này mới!)
+            // 2. XỬ LÝ WORD BANK (Cái bảng đẹp)
             if (trimmed.startsWith('[[WORD BANK:') && trimmed.endsWith(']]')) {
-                // Lấy danh sách từ trong ngoặc
-                let wordsContent = trimmed.substring(12, trimmed.length - 2); // Bỏ "[[WORD BANK:" và "]]"
+                let wordsContent = trimmed.substring(12, trimmed.length - 2);
                 let words = wordsContent.split(',').map(w => w.trim());
-                
-                // Tạo HTML cái bảng
                 html += `
                 <div class="word-bank-container">
                     <div class="word-bank-title"><i class="bi bi-box-seam-fill"></i> Word Bank</div>
@@ -313,10 +307,10 @@
                         ${words.map(w => `<span class="word-chip">${w}</span>`).join('')}
                     </div>
                 </div>`;
-                return; // Xong dòng này
+                return;
             }
 
-            // 3. Nhận diện các Tiêu đề phụ
+            // 3. Xử lý các tiêu đề phụ
             if (trimmed.startsWith('#') || trimmed.toUpperCase().startsWith('CHAPTER') || trimmed.includes('Graded Definitions') || trimmed.startsWith('PART ')) {
                 let headerText = trimmed.replace(/^#+\s*/, '').replace(/\*\*/g, '');
                 
@@ -330,7 +324,7 @@
                      html += `<h2 class="story-chapter">${headerText}</h2>`;
                 }
             } 
-            // 4. Dòng kẻ ngang
+            // 4. Kẻ ngang
             else if (trimmed.startsWith('---') || trimmed.startsWith('===')) {
                 html += `<hr style="margin: 30px 0; border-top: 2px dashed #ccc;">`;
             } 
@@ -349,14 +343,15 @@
         return html;
     }
 
-        document.addEventListener("DOMContentLoaded", function() {
-            const storyDivs = document.querySelectorAll('.story-reader-view');
-            storyDivs.forEach(div => {
-                const rawText = div.innerText;
-                div.innerHTML = formatStoryHTML(rawText);
-                div.classList.remove('story-reader-view');
-            });
+    document.addEventListener("DOMContentLoaded", function() {
+        const storyDivs = document.querySelectorAll('.story-reader-view');
+        storyDivs.forEach(div => {
+            const rawText = div.innerText;
+            div.innerHTML = formatStoryHTML(rawText);
+            div.classList.remove('story-reader-view');
         });
-    </script>
+    });
+</script>
 {% endblock %}
+
 
