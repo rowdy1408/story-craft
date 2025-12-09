@@ -149,7 +149,6 @@ def robust_json_extract(text):
     
 # --- 4. ADVANCED PROMPT ENGINEERING ---
 
-# [ĐÃ KHÔI PHỤC] Bảng hướng dẫn CEFR bị mất
 CEFR_LEVEL_GUIDELINES = {
     "PRE A1": "Simple Present (be/have/action). Short sentences (3-6 words). Focus on visual actions.",
     "A1": "Present Simple/Continuous. Basic conjunctions (and, but). Dialogues are simple Q&A.",
@@ -189,9 +188,33 @@ def create_prompt_for_ai(inputs):
         - Divide into **3-5 CHAPTERS**. Label: `### CHAPTER [X]: [Title]`
         - **IMPORTANT:** The story must start immediately with **CHAPTER 1**.
         """
-        opening_rule = "Start with a **Title**. Immediately follow with **CHAPTER 1**. Introduce the character INSIDE Chapter 1."
+        opening_rule = "Start with a **# Title**. Immediately follow with **CHAPTER 1**. Introduce the character INSIDE Chapter 1."
 
     repetition_rule = "Weave target words into the story naturally (approx 3-5 times each)."
+
+    # --- XỬ LÝ OPTIONAL INPUTS (Magic Dust) ---
+    
+    # 1. Số nhân vật phụ
+    support_instr = ""
+    if inputs.get('num_support'):
+        try:
+            num = int(inputs['num_support'])
+            if num > 0:
+                support_instr = f"- **Supporting Characters:** Include exactly {num} supporting character(s) to interact with the Main Character."
+        except: pass
+
+    # 2. Từ khóa cấm (Negative Keywords)
+    negative_instr = ""
+    if inputs.get('negative_keywords'):
+        negative_instr = f"- **NEGATIVE CONSTRAINTS:** Strictly AVOID the following words or topics: {inputs['negative_keywords']}."
+
+    # 3. Phong cách viết (Style)
+    style_instr = ""
+    if inputs.get('style_samples'):
+        # style_samples chứa nội dung text của style
+        # Lấy 500 ký tự đầu để làm mẫu cho AI
+        style_sample_text = inputs['style_samples'][:500].replace("\n", " ")
+        style_instr = f"- **WRITING STYLE MIMICRY:** Analyze and mimic the tone/style of this sample text: '{style_sample_text}...'"
 
     prompt = f"""
     **Role:** Best-selling Author of Graded Readers.
@@ -202,6 +225,7 @@ def create_prompt_for_ai(inputs):
     - Length: ~{word_count} words.
     - Theme: {inputs['theme']}
     - Main Character: {inputs.get('main_char', 'A relatable character')}
+    {support_instr}
     
     **MANDATORY GUIDELINES:**
     
@@ -217,10 +241,14 @@ def create_prompt_for_ai(inputs):
     
     4. **GRAMMAR & TONE:** - **Grammar Level:** {CEFR_LEVEL_GUIDELINES.get(cefr_level, "Standard grammar")}
        - **Tone:** Encouraging, Relatable, Human.
+    
+    5. **ADDITIONAL CONSTRAINTS:**
+       {negative_instr}
+       {style_instr}
 
     **OUTPUT FORMAT:**
 
-    [Creative Title]
+    # [Creative Title]
 
     [Story content...]
 
@@ -362,14 +390,47 @@ def handle_generation():
     api_key = configure_ai()
     if not api_key: return jsonify({"story_result": "API Key Missing"}), 500
     data = request.form
+    
+    # --- XỬ LÝ STYLE (Lấy nội dung từ DB) ---
+    selected_style_names = request.form.getlist('selected_styles')
+    style_content_str = ""
+    if selected_style_names:
+        styles = Style.query.filter(Style.name.in_(selected_style_names)).all()
+        # Gộp nội dung các style lại để AI tham khảo
+        style_content_str = "\n".join([s.content for s in styles])
+
     inputs = {
-        "idea": data.get('idea'), "vocab": data.get('vocab_str', '').split(','),
-        "level": data.get('cefr_level'), "count": data.get('word_count'), "theme": data.get('theme'),
-        "main_char": data.get('main_char'), "setting": data.get('setting'),
-        "style_samples": [], "negative_keywords": data.get('negative_keywords'),
-        "target_audience": data.get('target_audience'), "num_support": data.get('num_support_char')
+        "idea": data.get('idea'), 
+        "vocab": data.get('vocab_str', '').split(','),
+        "level": data.get('cefr_level'), 
+        "count": data.get('word_count'), 
+        "theme": data.get('theme'),
+        "main_char": data.get('main_char'), 
+        "setting": data.get('setting'),
+        "style_samples": style_content_str, # Truyền nội dung style vào
+        "negative_keywords": data.get('negative_keywords'),
+        "target_audience": data.get('target_audience'), 
+        "num_support": data.get('num_support_char')
     }
-    return jsonify({"story_result": generate_story_ai(api_key, create_prompt_for_ai(inputs))})
+    
+    # 1. TẠO TRUYỆN
+    prompt = create_prompt_for_ai(inputs)
+    story_content = generate_story_ai(api_key, prompt)
+    
+    if "ERROR" in story_content:
+        return jsonify({"story_result": story_content})
+
+    # 2. XỬ LÝ QUIZ (NẾU ĐƯỢC CHỌN)
+    quiz_type = data.get('quiz_type')
+    if quiz_type and quiz_type != 'none':
+        # Tạo prompt cho Quiz dựa trên nội dung truyện vừa có
+        quiz_prompt = create_pedagogical_quiz_prompt(story_content, quiz_type)
+        quiz_content = generate_story_ai(api_key, quiz_prompt)
+        
+        # Gộp Quiz vào cuối truyện để hiển thị luôn
+        story_content += f"\n\n\n{'='*20}\n## 🎓 PEDAGOGICAL WORKSHEET\n{'='*20}\n\n{quiz_content}"
+
+    return jsonify({"story_result": story_content})
 
 @app.route('/create-comic/<int:story_id>', methods=['POST'])
 @login_required
@@ -550,7 +611,7 @@ def handle_translation():
     }
     return jsonify({"story_result": generate_story_ai(api_key, create_translation_prompt(inputs))})
 
-# --- ROUTE MỚI: TẠO QUIZ SƯ PHẠM ---
+# --- ROUTE MỚI: TẠO QUIZ SƯ PHẠM (Dành cho trang Saved Stories - Giữ lại) ---
 @app.route('/add-quiz-to-saved', methods=['POST'])
 @login_required
 def add_quiz_to_saved():
