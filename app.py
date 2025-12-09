@@ -300,7 +300,45 @@ def create_translation_prompt(inputs):
     2. **GRADING:** - Level: {cefr_level}. Length: ~{inputs['count']} words.
     3. **OUTPUT:** Start with # English Title.
     """
+def create_pedagogical_quiz_prompt(story_content, quiz_preference):
+    """
+    Tạo prompt theo chuẩn sư phạm: Controlled -> Less Controlled -> Free Practice
+    """
+    return f"""
+    **Role:** Expert ESL/EFL Teacher & Curriculum Designer.
+    **Task:** Create a comprehensive 3-stage reading comprehension quiz based on the story below.
+    
+    **INPUT STORY:**
+    {story_content}
 
+    **PEDAGOGICAL STRUCTURE (STRICTLY FOLLOW THIS):**
+
+    **PART 1: CONTROLLED PRACTICE (Focus: Accuracy & Recall)**
+    * *Goal:* Check basic understanding of facts and vocabulary.
+    * *Format:* Based on user preference: '{quiz_preference}'.
+        - If 'mcq': Create 5 Multiple Choice Questions with 4 options (A,B,C,D).
+        - If 'tf': Create 5 True/False statements.
+        - If 'mix': Create 3 MCQ and 3 True/False.
+        - If 'open': (Override) Create 5 short-answer questions requiring exact details from text.
+
+    **PART 2: LESS CONTROLLED PRACTICE (Focus: Language Use)**
+    * *Goal:* Test vocabulary/grammar in context.
+    * *Format:* **Gap Fill (Cloze Test)**.
+        - Select a summary paragraph or a key excerpt from the story.
+        - Remove 5-6 key words (verbs, adjectives, or target vocab).
+        - Provide a "Word Bank" box containing the missing words (plus 2 distractors/extra words).
+
+    **PART 3: FREE PRACTICE (Focus: Production & Critical Thinking)**
+    * *Goal:* Encourage personal expression and creative writing.
+    * *Format:*
+        1. **Discussion:** 1 Open-ended question connecting the story theme to the student's real life (e.g., "Have you ever...?").
+        2. **Creative Writing:** 1 Prompt asking to rewrite the ending, describe a character, or write a dialogue.
+
+    **OUTPUT FORMAT:**
+    - Use clear Markdown headers (###).
+    - **ANSWER KEY:** Provide the answers for Part 1 and Part 2 at the very bottom, hidden inside a collapsible section or separated by a line.
+    """
+       
 # --- 5. ROUTES ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -370,6 +408,27 @@ def handle_generation():
         "target_audience": data.get('target_audience'), "num_support": data.get('num_support_char')
     }
     return jsonify({"story_result": generate_story_ai(api_key, create_prompt_for_ai(inputs))})
+
+@app.route('/add-quiz-to-saved', methods=['POST'])
+@login_required
+def add_quiz_to_saved():
+    s = Story.query.get(request.form.get('story_id'))
+    if s and s.user_id == current_user.id:
+        quiz_type = request.form.get('quiz_type')
+        api_key = configure_ai()
+        
+        # Gọi hàm tạo prompt sư phạm mới
+        prompt = create_pedagogical_quiz_prompt(s.content, quiz_type)
+        
+        # Gọi AI
+        quiz_content = generate_story_ai(api_key, prompt)
+        
+        # Lưu vào database (Nối tiếp vào nội dung truyện)
+        # Thêm separator để phân biệt rõ ràng
+        s.content += f"\n\n\n{'='*20}\n## 🎓 PEDAGOGICAL WORKKSHEET\n{'='*20}\n\n{quiz_content}"
+        
+        db.session.commit()
+    return redirect(url_for('saved_stories_page'))
 
 @app.route('/create-comic/<int:story_id>', methods=['POST'])
 @login_required
@@ -472,6 +531,7 @@ def upload_panel_image():
     comic.panels_content = json.dumps(panels)
     db.session.commit()
     return jsonify({"url": f"/static/uploads/{fname}"})
+                    
 
 # --- ROUTE NÀY QUAN TRỌNG: FIX LỖI BUILDERROR ---
 @app.route('/reuse-prompt/<int:story_id>')
@@ -637,6 +697,7 @@ if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
 
     app.run(debug=True, port=5000)  
+
 
 
 
