@@ -126,99 +126,62 @@ def generate_story_ai(api_key, prompt):
     except Exception as e: return f"System Error: {e}"
 
 def robust_json_extract(text):
-    """
-    Trích xuất JSON từ phản hồi AI, xử lý mạnh mẽ các lỗi cú pháp thường gặp.
-    """
     try:
-        # 1. Ưu tiên tìm trong thẻ code block ```json ... ``` hoặc ``` ... ```
-        # Sử dụng regex linh hoạt hơn để bắt nội dung bên trong
         match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.DOTALL)
         if match:
             text = match.group(1)
-        
-        # 2. Nếu không có code block, tìm cặp ngoặc { } hoặc [ ] bao quanh nội dung lớn nhất
         else:
-            # Tìm vị trí bắt đầu của { hoặc [
             start_match = re.search(r"[\{\[]", text)
             if start_match:
                 start_idx = start_match.start()
-                # Tìm vị trí kết thúc của } hoặc ]
                 end_idx = max(text.rfind('}'), text.rfind(']'))
-                
                 if end_idx > start_idx:
                     text = text[start_idx : end_idx + 1]
             else:
-                return None # Không tìm thấy cấu trúc JSON nào
+                return None
 
-        # 3. Vệ sinh dữ liệu (Clean common AI errors)
-        # Xóa comments kiểu // ... (nếu có)
         text = re.sub(r'//.*', '', text)
-        # Fix lỗi dấu phẩy thừa cuối danh sách/object (ví dụ: {"a": 1,} -> {"a": 1})
         text = re.sub(r',\s*([\]}])', r'\1', text)
-        
         return json.loads(text)
-        
     except Exception as e:
         print(f"JSON Parsing Error: {e}")
-        # In ra một phần text để debug nếu chạy local
-        print(f"Failed Text Snippet: {text[:200]}...") 
         return None
     
-# --- 4. ADVANCED PROMPT ENGINEERING (UPDATED) ---
-
-CEFR_LEVEL_GUIDELINES = {
-    "PRE A1": "Simple Present (be/have/action). Short sentences (3-6 words). Focus on visual actions.",
-    "A1": "Present Simple/Continuous. Basic conjunctions (and, but). Dialogues are simple Q&A.",
-    "A2": "Past Simple, Future (will/going to). Adverbs of frequency. Coordinated sentences.",
-    "B1": "Narrative tenses (Past Continuous), Conditionals (1 & 2), Reasons (because/so). Expressing feelings/opinions.",
-    "B2": "Passive voice, Reported speech, Relative clauses. Nuanced vocabulary and abstract ideas.",
-    "C1": "Complex sentence structures, Inversion, Idiomatic expressions. Literary tone.",
-    "C2": "Sophisticated style, Implicit meaning, Cultural references, Irony/Humor."
-}
-
-# Trong file app.py, thay thế hàm create_prompt_for_ai cũ bằng đoạn này:
-
-# Tìm đến hàm create_prompt_for_ai và thay thế toàn bộ bằng đoạn này:
+# --- 4. ADVANCED PROMPT ENGINEERING ---
 
 def create_prompt_for_ai(inputs):
     cefr_level = inputs['level'].upper()
     vocab_list_str = ", ".join(inputs['vocab'])
     
-    # Xử lý số lượng từ để quyết định cấu trúc
+    # Xử lý số lượng từ
     try:
         word_count = int(inputs['count'])
     except:
-        word_count = 250 # Mặc định nếu lỗi
+        word_count = 250
         
-    # 1. Setting Context
     setting_val = inputs['setting'].strip()
     setting_instr = f"**SETTING:** {setting_val}" if setting_val else "**SETTING:** A realistic setting in Vietnam. Atmosphere is key."
 
-    # 2. Logic Structure (Xử lý thông minh hơn)
     if word_count < 400:
-        # --- TRUYỆN NGẮN (Flash Fiction) ---
         structure_type = "SHORT STORY (Continuous)"
         structure_instr = """
         **STRUCTURE: CONTINUOUS STORY**
-        - Do NOT use Chapter headings (e.g., NO 'Chapter 1').
+        - Do NOT use Chapter headings.
         - Start directly with the story content after the Title.
         - Organize into clear paragraphs.
         """
-        opening_rule = "Start with a **# Title**. Then immediately start the story text. No intro, no chapter headers."
+        opening_rule = "Start with a **# Title**. Then immediately start the story text."
     else:
-        # --- TRUYỆN DÀI (Chapter Book) ---
         structure_type = "CHAPTER BOOK"
         structure_instr = """
         **STRUCTURE: CHAPTERS**
         - Divide into **3-5 CHAPTERS**. Label: `### CHAPTER [X]: [Title]`
         - **IMPORTANT:** The story must start immediately with **CHAPTER 1**.
         """
-        opening_rule = "Start with a **Title**. Immediately follow with **CHAPTER 1**. Introduce the character INSIDE Chapter 1."
+        opening_rule = "Start with a **# Title**. Immediately follow with **CHAPTER 1**. Introduce the character INSIDE Chapter 1."
 
-    # Quy tắc lặp từ
     repetition_rule = "Weave target words into the story naturally (approx 3-5 times each)."
 
-    # 3. Master Prompt
     prompt = f"""
     **Role:** Best-selling Author of Graded Readers.
     **Goal:** Write a {structure_type} that is engaging, emotional, and educational.
@@ -246,9 +209,7 @@ def create_prompt_for_ai(inputs):
 
     **OUTPUT FORMAT:**
 
-    [Creative Title]
-
-    [Depending on structure, either 'CHAPTER 1:...' or start story text directly]
+    # [Creative Title]
 
     [Story content...]
 
@@ -277,13 +238,8 @@ def create_comic_script_prompt(story_content):
       "panels": [ 
         {{ 
             "panel_number": 1, 
-            "visual_description": "Detailed description of the scene for AI image generator...", 
-            "caption": "Short text from the story for this page" 
-        }},
-        {{ 
-            "panel_number": 2, 
-            "visual_description": "...", 
-            "caption": "..." 
+            "visual_description": "Detailed description of the scene...", 
+            "caption": "Short text from the story" 
         }}
       ]
     }}
@@ -300,6 +256,7 @@ def create_translation_prompt(inputs):
     2. **GRADING:** - Level: {cefr_level}. Length: ~{inputs['count']} words.
     3. **OUTPUT:** Start with # English Title.
     """
+
 def create_pedagogical_quiz_prompt(story_content, quiz_preference):
     """
     Tạo prompt theo chuẩn sư phạm: Controlled -> Less Controlled -> Free Practice
@@ -326,19 +283,19 @@ def create_pedagogical_quiz_prompt(story_content, quiz_preference):
     * *Format:* **Gap Fill (Cloze Test)**.
         - Select a summary paragraph or a key excerpt from the story.
         - Remove 5-6 key words (verbs, adjectives, or target vocab).
-        - Provide a "Word Bank" box containing the missing words (plus 2 distractors/extra words).
+        - Provide a "Word Bank" box containing the missing words.
 
     **PART 3: FREE PRACTICE (Focus: Production & Critical Thinking)**
     * *Goal:* Encourage personal expression and creative writing.
     * *Format:*
-        1. **Discussion:** 1 Open-ended question connecting the story theme to the student's real life (e.g., "Have you ever...?").
+        1. **Discussion:** 1 Open-ended question connecting the story theme to the student's real life.
         2. **Creative Writing:** 1 Prompt asking to rewrite the ending, describe a character, or write a dialogue.
 
     **OUTPUT FORMAT:**
     - Use clear Markdown headers (###).
     - **ANSWER KEY:** Provide the answers for Part 1 and Part 2 at the very bottom, hidden inside a collapsible section or separated by a line.
     """
-       
+
 # --- 5. ROUTES ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -351,12 +308,10 @@ def login():
         if user and user.is_locked:
             flash('Locked.', 'danger'); return render_template('login.html')
         
-        # --- ĐOẠN MỚI THÊM VÀO ---
         if user and user.username.lower() == 'admin':
             system_pin_hash = os.environ.get('ADMIN_PIN_HASH')
             if not system_pin_hash or not check_password_hash(system_pin_hash, admin_pin):
                 flash('Wrong PIN.', 'danger'); return render_template('login.html')
-        # -------------------------
 
         if user and check_password_hash(user.password_hash, password):
             login_user(user); return redirect(url_for('index'))
@@ -369,11 +324,7 @@ def register():
         username = request.form['username']
         password = request.form['password']
         code = request.form.get('secret_code')
-        valid_codes = [
-            os.environ.get('REGISTRATION_CODE_BOSS'), 
-            os.environ.get('REGISTRATION_CODE_VIP')
-        ]
-        # Lọc bỏ giá trị None nếu chưa cấu hình env
+        valid_codes = [os.environ.get('REGISTRATION_CODE_BOSS'), os.environ.get('REGISTRATION_CODE_VIP')]
         valid_codes = [c for c in valid_codes if c] 
         
         if code not in valid_codes: return redirect(url_for('register'))
@@ -409,27 +360,6 @@ def handle_generation():
     }
     return jsonify({"story_result": generate_story_ai(api_key, create_prompt_for_ai(inputs))})
 
-@app.route('/add-quiz-to-saved', methods=['POST'])
-@login_required
-def add_quiz_to_saved():
-    s = Story.query.get(request.form.get('story_id'))
-    if s and s.user_id == current_user.id:
-        quiz_type = request.form.get('quiz_type')
-        api_key = configure_ai()
-        
-        # Gọi hàm tạo prompt sư phạm mới
-        prompt = create_pedagogical_quiz_prompt(s.content, quiz_type)
-        
-        # Gọi AI
-        quiz_content = generate_story_ai(api_key, prompt)
-        
-        # Lưu vào database (Nối tiếp vào nội dung truyện)
-        # Thêm separator để phân biệt rõ ràng
-        s.content += f"\n\n\n{'='*20}\n## 🎓 PEDAGOGICAL WORKKSHEET\n{'='*20}\n\n{quiz_content}"
-        
-        db.session.commit()
-    return redirect(url_for('saved_stories_page'))
-
 @app.route('/create-comic/<int:story_id>', methods=['POST'])
 @login_required
 def create_comic_direct(story_id):
@@ -437,52 +367,48 @@ def create_comic_direct(story_id):
     api_key = configure_ai()
     
     try:
-        # --- BƯỚC 1: LẤY THÔNG TIN NHÂN VẬT TỪ DỮ LIỆU CŨ ---
-        char_desc = "A relatable character"
+        # --- BƯỚC 1: XÂY DỰNG "HỒ SƠ NHÂN VẬT" ---
+        char_name = "The main character"
+        char_visual = "wearing a simple red t-shirt and blue denim shorts" 
+        
         try:
             if story.prompt_data:
                 saved_inputs = json.loads(story.prompt_data)
-                # Lấy tên và đặc điểm nhân vật người dùng đã nhập
-                raw_char = saved_inputs.get('main_char', '')
-                if raw_char:
-                    # Mẹo: Thêm chi tiết quần áo cố định để AI không vẽ lung tung
-                    # Ví dụ: Luôn mặc áo phông trắng và quần jean
-                    char_desc = f"{raw_char}, distinct facial features, wearing a signature white t-shirt and blue shorts, same character design in all shots"
+                raw_name = saved_inputs.get('main_char', '')
+                if raw_name:
+                    char_name = raw_name
+                    if "wearing" not in raw_name.lower() and "shirt" not in raw_name.lower():
+                        char_visual = f"{raw_name}, wearing a signature bright yellow hoodie and black pants"
+                    else:
+                        char_visual = raw_name
         except:
             pass
+            
+        consistency_prompt = f"IDENTITY: {char_visual}. (Keep facial features, hair style, and clothing EXACTLY the same in every shot)."
 
-        # --- BƯỚC 2: GỌI AI ĐỂ LẤY KỊCH BẢN (GIỮ NGUYÊN) ---
+        # --- BƯỚC 2: GỌI AI ---
         ai_response_text = generate_story_ai(api_key, create_comic_script_prompt(story.content))
         data = robust_json_extract(ai_response_text)
         
-        if not data:
-            print("AI Response Raw:", ai_response_text)
-            return jsonify({"error": "AI trả về dữ liệu không đúng định dạng JSON. Vui lòng thử lại."}), 500
+        if not data: return jsonify({"error": "AI Error. Please try again."}), 500
 
         panels_data = data.get('panels', data.get('scenes', data))
         if not isinstance(panels_data, list):
              if isinstance(panels_data, dict): panels_data = [panels_data]
-             else: return jsonify({"error": "Cấu trúc JSON không hợp lệ."}), 500
+             else: return jsonify({"error": "JSON Error."}), 500
 
         final_panels = []
 
-        # --- BƯỚC 3: XỬ LÝ PROMPT - NHỒI "VISUAL ANCHOR" ---
+        # --- BƯỚC 3: TẠO PROMPT ---
         for panel in panels_data:
-            raw = panel.get('visual_description') or panel.get('description') or panel.get('prompt') or "A scene"
-            
-            # Clean keywords
+            raw_action = panel.get('visual_description') or panel.get('description') or "Scene"
             for w in ["comic", "panel", "page", "grid", "speech bubble", "text"]: 
-                raw = raw.replace(w, "image")
-            
-            # --- QUAN TRỌNG: Cấu trúc Prompt "Bánh Mì Kẹp Thịt" ---
-            # 1. Định nghĩa nhân vật (Cố định)
-            # 2. Hành động/Bối cảnh (Thay đổi theo từng panel)
-            # 3. Phong cách nghệ thuật (Cố định)
+                raw_action = raw_action.replace(w, "image")
             
             final_prompt = (
-                f"**Character Design:** {char_desc}. "
-                f"**Action:** {raw}. "
-                f"**Style:** A single cinematic movie still, full screen digital art, Disney/Pixar style, 8k resolution, consistent character. "
+                f"**[1] CHARACTER:** {consistency_prompt} "
+                f"**[2] SCENE ACTION:** {raw_action}. "
+                f"**[3] STYLE:** 3D Disney Pixar Animation style, 8k render, soft lighting. "
                 f"--ar 3:2 --no text speech bubbles comic grid"
             )
             
@@ -512,9 +438,8 @@ def view_comic(comic_id):
 def get_batch_prompt(comic_id):
     comic = Comic.query.get_or_404(comic_id)
     panels = json.loads(comic.panels_content)
-    scenes = [p['prompt'].replace("A single cinematic movie still, full screen digital art.", "").replace("--ar 3:2 --no text speech bubbles comic grid collage", "").strip().replace(",", " ") for p in panels]
-    batch = f"/imagine prompt: A single cinematic movie still, full screen digital art. {{ {', '.join(scenes)} }} --ar 3:2 --no text speech bubbles comic grid collage"
-    return jsonify({"batch_prompt": batch})
+    scenes = [p['prompt'] for p in panels]
+    return jsonify({"batch_prompt": " ".join(scenes)})
 
 @app.route('/upload-panel-image', methods=['POST'])
 @login_required
@@ -531,9 +456,7 @@ def upload_panel_image():
     comic.panels_content = json.dumps(panels)
     db.session.commit()
     return jsonify({"url": f"/static/uploads/{fname}"})
-                    
 
-# --- ROUTE NÀY QUAN TRỌNG: FIX LỖI BUILDERROR ---
 @app.route('/reuse-prompt/<int:story_id>')
 @login_required
 def reuse_prompt(story_id):
@@ -549,9 +472,7 @@ def reuse_prompt(story_id):
         except:
             prev_inputs = {}
     return render_template('index.html', all_styles=Style.query.all(), previous_inputs=prev_inputs, user=current_user)
-# -----------------------------------------------
 
-# --- OTHER ROUTES ---
 @app.route('/styles')
 @login_required
 def styles_page(): return render_template('manage_styles.html', styles=Style.query.all(), user=current_user)
@@ -579,10 +500,8 @@ def saved_stories_page(): return render_template('saved_stories.html', stories=S
 @app.route('/save-story', methods=['POST'])
 @login_required
 def handle_save_story():
-    # Tự động lấy Title từ dòng đầu tiên (có dấu # hoặc không)
     content = request.form.get('story_content', '')
     title = content.strip().split('\n')[0].replace('#', '').strip() or "Untitled"
-    
     db.session.add(Story(title=title, content=content, user_id=current_user.id, prompt_data=request.form.get('prompt_data_json')))
     db.session.commit()
     return redirect(url_for('saved_stories_page'))
@@ -620,12 +539,24 @@ def handle_translation():
     }
     return jsonify({"story_result": generate_story_ai(api_key, create_translation_prompt(inputs))})
 
+# --- ROUTE MỚI: TẠO QUIZ SƯ PHẠM ---
 @app.route('/add-quiz-to-saved', methods=['POST'])
 @login_required
 def add_quiz_to_saved():
     s = Story.query.get(request.form.get('story_id'))
     if s and s.user_id == current_user.id:
-        s.content += f"\n\n--- QUIZ ---\n{generate_story_ai(configure_ai(), f'Create {request.form.get('quiz_type')} quiz for: {s.content}')}"
+        quiz_type = request.form.get('quiz_type')
+        api_key = configure_ai()
+        
+        # Gọi hàm tạo prompt sư phạm (đã thêm ở trên)
+        prompt = create_pedagogical_quiz_prompt(s.content, quiz_type)
+        
+        # Gọi AI tạo nội dung
+        quiz_content = generate_story_ai(api_key, prompt)
+        
+        # Lưu vào DB (Nối tiếp vào truyện)
+        s.content += f"\n\n\n{'='*20}\n## 🎓 PEDAGOGICAL WORKSHEET\n{'='*20}\n\n{quiz_content}"
+        
         db.session.commit()
     return redirect(url_for('saved_stories_page'))
 
@@ -668,19 +599,13 @@ def reset_password():
         code = request.form['secret_code']
         new_password = request.form['new_password']
         
-        # 1. Kiểm tra mã bảo mật (Dùng chung mã với lúc đăng ký để đơn giản)
-        # Hoặc bạn có thể tạo biến môi trường mới tên là RESET_CODE
-        valid_codes = [
-            os.environ.get('REGISTRATION_CODE_BOSS'), 
-            os.environ.get('REGISTRATION_CODE_VIP')
-        ]
-        valid_codes = [c for c in valid_codes if c] # Lọc bỏ None
+        valid_codes = [os.environ.get('REGISTRATION_CODE_BOSS'), os.environ.get('REGISTRATION_CODE_VIP')]
+        valid_codes = [c for c in valid_codes if c] 
 
         if code not in valid_codes:
             flash('Invalid Secret Code provided.', 'danger')
             return redirect(url_for('reset_password'))
 
-        # 2. Tìm user và đổi pass
         user = User.query.filter_by(username=username).first()
         if user:
             user.password_hash = generate_password_hash(new_password)
@@ -695,12 +620,4 @@ def reset_password():
 
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
-
-    app.run(debug=True, port=5000)  
-
-
-
-
-
-
-
+    app.run(debug=True, port=5000)
