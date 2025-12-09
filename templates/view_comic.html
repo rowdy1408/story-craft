@@ -21,7 +21,6 @@
         display: flex; justify-content: space-between; align-items: center;
         transition: all 0.3s ease;
     }
-    
     .char-badge {
         background: #e3f2fd; color: #0d47a1; 
         padding: 5px 12px; border-radius: 20px; 
@@ -100,9 +99,12 @@
         
         /* ẨN CÁC PHẦN TỬ THỪA KHI IN */
         .sticky-toolbar, nav, .btn, .alert, .master-prompt-box, .upload-zone, .prompt-box, label, .edit-btn, h1, .no-image-print, .badge, span.badge, .back-cover-data-row, .studio-container > div:first-child, .btn-copy-prompt, .prompt-container, .text-muted { display: none !important; }
+        
+        /* Ẩn dòng chữ 'Use previous image...' */
         .d-print-none { display: none !important; }
 
         .studio-container { width: 100% !important; margin: 0 !important; padding: 0 !important; max-width: none !important; display: block !important; }
+        
         .print-cover-page, .panel-row, .print-back-cover { 
             width: 297mm !important; height: 210mm !important; 
             break-after: page !important; page-break-after: always !important; 
@@ -112,16 +114,21 @@
             border-radius: 0 !important; box-shadow: none !important; border: none !important; 
         }
         
+        /* COVER PAGE */
         .print-cover-page { background-color: #0d3b66 !important; color: white !important; border: 15px solid #fdf6e3 !important; box-sizing: border-box !important; }
         .cover-content-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; margin-top: 20px; }
         .cover-top-bar { background-color: #f1c40f; color: #0d3b66; padding: 10px 40px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; border-radius: 0 0 15px 15px; font-family: sans-serif; position: absolute; top: 0; z-index: 10; }
         .print-cover-title { font-size: 3.5rem; font-weight: bold; text-align: center; margin-bottom: 20px; line-height: 1.1; font-family: 'Playfair Display', serif; text-shadow: 3px 3px 0px #000; max-width: 90%; }
+        
         .cover-image-container { width: 50%; height: 110mm; background-color: #fff; border: 5px solid #f1c40f; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 20px; }
         .cover-image-img { width: 100%; height: 100%; object-fit: cover; }
         .print-cover-subtitle { font-size: 1.2rem; font-style: italic; opacity: 0.9; }
+        
+        /* PANEL PAGES */
         .panel-row { background: white !important; border: none !important; padding: 10mm 20mm !important; box-sizing: border-box !important; }
         .panel-preview { order: 1; width: 100%; height: 65%; display: flex; align-items: center; justify-content: center; background: none !important; border: none !important; margin-bottom: 10px; }
         .comic-image { max-width: 95%; max-height: 100%; object-fit: contain; border: 3px solid #333 !important; box-shadow: 5px 5px 0px #eee; }
+        
         .panel-info { 
             order: 2; width: 100%; height: 25%; text-align: center; 
             border: 2px solid #333 !important; background-color: #fff9c4 !important; 
@@ -130,6 +137,8 @@
         }
         .caption-text { font-size: 16pt; line-height: 1.3; color: #000; font-family: 'Comic Neue', cursive, sans-serif; font-weight: bold; border: none !important; margin: 0 !important; padding: 0 !important; }
         .page-number-print { position: absolute; bottom: 5mm; font-size: 10pt; color: #aaa; }
+        
+        /* BACK COVER */
         .print-back-cover { background-color: #fdf6e3 !important; color: #333 !important; padding: 40px !important; border: 15px solid #0d3b66; box-sizing: border-box !important; justify-content: space-between; }
     }
 </style>
@@ -148,7 +157,12 @@
         </div>
 
         <div class="d-flex align-items-center gap-2">
-            <span class="text-muted small d-none d-md-inline">Character Identity:</span>
+            <button class="btn btn-info btn-sm rounded-pill text-white fw-bold" onclick="randomizeCover()" title="Pick a random image from uploads">
+                <i class="bi bi-shuffle"></i> Random Cover
+            </button>
+
+            <div class="vr mx-2"></div>
+
             <div class="char-badge" onclick="copyCharDesc()" title="Copy Character Description Only">
                 <i class="bi bi-person-bounding-box"></i> <span id="char-desc-preview">Loading...</span>
             </div>
@@ -167,14 +181,12 @@
         <div class="cover-content-wrapper"> 
             <div class="print-cover-title">{{ title }}</div>
             <div class="cover-image-container">
-                {% if panels|length > 0 and panels[0].image_url %}
-                    <img src="{{ panels[0].image_url }}" class="cover-image-img">
-                {% else %}
-                    <div class="d-print-none" style="color: #0d3b66; text-align: center;">
-                        <i class="bi bi-image" style="font-size: 3rem;"></i>
-                        <p>Cover Image (Panel 1)<br>Not uploaded yet</p>
-                    </div>
-                {% endif %}
+                <img src="{{ panels[0].image_url or '' }}" id="cover-img" class="cover-image-img" style="{{ 'display:none;' if not panels[0].image_url else '' }}">
+                
+                <div id="cover-placeholder" class="d-print-none" style="color: #0d3b66; text-align: center; {{ 'display:none;' if panels[0].image_url else '' }}">
+                    <i class="bi bi-image" style="font-size: 3rem;"></i>
+                    <p>Cover Image (Panel 1)<br>Not uploaded yet</p>
+                </div>
             </div>
             <div class="print-cover-subtitle">Created with Story Weaver</div>
         </div>
@@ -241,7 +253,6 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Tự động lấy đặc điểm nhân vật từ Panel 1
         const firstPrompt = document.getElementById('prompt-text-1');
         if (firstPrompt) {
             const text = firstPrompt.innerText;
@@ -265,7 +276,35 @@
                 document.getElementById('print-level').innerText = data.level || "Beginner";
             } catch (e) { console.error("Back cover data error", e); }
         }
+
+        // Tự động randomize cover nếu chưa có ảnh bìa
+        const coverImg = document.getElementById('cover-img');
+        if (coverImg && coverImg.style.display === 'none') {
+            randomizeCover();
+        }
     });
+
+    // --- HÀM RANDOM COVER ---
+    function randomizeCover() {
+        // 1. Lấy tất cả ảnh comic đang hiện (đã upload)
+        const images = document.querySelectorAll('.comic-image.d-block');
+        if (images.length === 0) {
+            // Nếu chưa upload ảnh nào thì thôi
+            return;
+        }
+
+        // 2. Chọn ngẫu nhiên 1 ảnh
+        const randomIndex = Math.floor(Math.random() * images.length);
+        const randomSrc = images[randomIndex].src;
+
+        // 3. Gán vào Cover
+        const coverImg = document.getElementById('cover-img');
+        const placeholder = document.getElementById('cover-placeholder');
+
+        coverImg.src = randomSrc;
+        coverImg.style.display = 'block';
+        placeholder.style.display = 'none'; // Ẩn placeholder đi
+    }
 
     function copyCharDesc() {
         const text = document.getElementById('full-char-desc').value;
