@@ -159,11 +159,49 @@ CEFR_LEVEL_GUIDELINES = {
     "C2": "Sophisticated style, Implicit meaning, Cultural references, Irony/Humor."
 }
 
+# --- KHO GIỌNG VĂN MẪU THEO LEVEL (LITERARY STYLES) ---
+LITERARY_STYLES = {
+    "PRE A1": [
+        "Style of Eric Carle: Very simple, repetitive, focuses on nature, colors, and sensory details.",
+        "Style of Margaret Wise Brown (Goodnight Moon): Gentle, rhythmic, soothing, listing objects in the room.",
+        "Style of Mo Willems: Dialogue-heavy, simple, repetitive but expressive and funny."
+    ],
+    "A1": [
+        "Style of Arnold Lobel (Frog and Toad): Simple but warm friendship stories, cozy atmosphere.",
+        "Style of Beatrix Potter: Gentle, pastoral, focuses on small animals and rural settings.",
+        "Style of Dr. Seuss (Prose version): Whimsical, playful, simple vocabulary but creative concepts."
+    ],
+    "A2": [
+        "Style of Roald Dahl: Mischievous, energetic, vivid adjectives, funny exaggerations of characters.",
+        "Style of Enid Blyton: Clear adventure, group of friends, descriptive but accessible.",
+        "Style of Jeff Kinney (Wimpy Kid): Casual diary format, relatable school life struggles, humorous."
+    ],
+    "B1": [
+        "Style of Ernest Hemingway: Short, punchy sentences. Focus on action and concrete details. No fluffy adjectives.",
+        "Style of E.B. White (Charlotte's Web): Clear, elegant, touching, focuses on nature and loyalty.",
+        "Style of R.L. Stine (Goosebumps): Suspenseful, cliffhangers, engaging plot twists (good for mysteries)."
+    ],
+    "B2": [
+        "Style of Mark Twain: Folksy, observational, rich in local color and dialect nuances.",
+        "Style of C.S. Lewis: Descriptive, slightly magical tone, clear moral compass.",
+        "Style of Neil Gaiman (Coraline): Atmospheric, slightly dark/mysterious, rich imagery."
+    ],
+    "C1": [
+        "Style of Jane Austen: Social observation, irony, complex sentence structures, focus on manners/relationships.",
+        "Style of Sherlock Holmes (Conan Doyle): Deductive, analytical, detailed descriptions of settings.",
+        "Style of Jack London: Raw nature, survival, intense description of the environment."
+    ],
+    "C2": [
+        "Style of Oscar Wilde: Witty, aesthetic, sophisticated vocabulary, paradoxical humor.",
+        "Style of Edgar Allan Poe: Melancholic, poetic, complex grammar, psychological depth.",
+        "Style of Virginia Woolf: Stream of consciousness, focus on internal thoughts and fleeing moments."
+    ]
+}
+
 def create_prompt_for_ai(inputs):
     cefr_level = inputs['level'].upper()
     vocab_list_str = ", ".join(inputs['vocab'])
     
-    # Xử lý số lượng từ
     try:
         word_count = int(inputs['count'])
     except:
@@ -172,31 +210,37 @@ def create_prompt_for_ai(inputs):
     setting_val = inputs['setting'].strip()
     setting_instr = f"**SETTING:** {setting_val}" if setting_val else "**SETTING:** A realistic setting in Vietnam. Atmosphere is key."
 
-    # --- LOGIC CẤU TRÚC MỚI (UPDATE) ---
+    # --- 1. CHỌN STYLE TỰ ĐỘNG THEO LEVEL ---
+    suggested_styles = LITERARY_STYLES.get(cefr_level, [])
+    style_selection_instr = ""
+    
+    if suggested_styles:
+        style_list_str = "\n".join([f"- {s}" for s in suggested_styles])
+        style_selection_instr = f"""
+    **LITERARY VOICE (CRITICAL):**
+    Choose ONE of the following styles that BEST fits the story idea below:
+    {style_list_str}
+    -> **Apply the chosen style consistently throughout the story.**
+    """
+
+    # --- 2. LOGIC CẤU TRÚC (PICTURE BOOK / SHORT STORY) ---
     target_audience = inputs.get('target_audience', 'General')
 
-    # 1. Ưu tiên Picture Book cho Trẻ em & Level thấp
     if target_audience == 'Children' and cefr_level in ["PRE A1", "A1", "A2"]:
         structure_type = "PICTURE BOOK"
-        
-        # Tính số trang linh hoạt dựa trên số từ (để mỗi trang khoảng 30-40 từ)
-        if word_count < 150:
-            num_pages = "4-5"   # Truyện rất ngắn -> 4-5 trang
-        elif word_count < 300:
-            num_pages = "6-8"   # Truyện vừa -> 6-8 trang
-        else:
-            num_pages = "8-10"  # Truyện dài -> 8-10 trang
+        if word_count < 150: num_pages = "4-5"
+        elif word_count < 300: num_pages = "6-8"
+        else: num_pages = "8-10"
             
         structure_instr = f"""
         **STRUCTURE: PICTURE BOOK FORMAT**
         - Divide the story into **{num_pages} PAGES** (based on word count).
         - Label each part clearly as: `--- PAGE [X] ---`
-        - **IMPORTANT:** Write a meaningful paragraph (3-5 sentences) for each page. Avoid single-line pages to ensure rich content.
+        - **IMPORTANT:** Write a meaningful paragraph (3-5 sentences) per page. Avoid single-line pages to ensure rich content.
         - Ensure good flow between pages.
         """
         opening_rule = "Start with a **# Title**. Then immediately start with `--- PAGE 1 ---`."
-
-    # 2. Truyện ngắn (Viết liền - Dành cho người lớn hoặc level cao nhưng truyện ngắn)
+        
     elif word_count < 400:
         structure_type = "SHORT STORY (Continuous)"
         structure_instr = """
@@ -206,8 +250,6 @@ def create_prompt_for_ai(inputs):
         - Organize into clear paragraphs.
         """
         opening_rule = "Start with a **# Title**. Then immediately start the story text."
-
-    # 3. Truyện dài (Chia chương - Dành cho truyện dài > 400 từ)
     else:
         structure_type = "CHAPTER BOOK"
         structure_instr = """
@@ -219,41 +261,32 @@ def create_prompt_for_ai(inputs):
 
     repetition_rule = "Weave target words into the story naturally (approx 3-5 times each)."
 
-    # --- XỬ LÝ OPTIONAL INPUTS (Magic Dust) ---
-    
-    # 1. Số nhân vật phụ
+    # --- 3. XỬ LÝ MAGIC DUST (Style người dùng chọn sẽ ghi đè hoặc kết hợp) ---
+    # Logic Nhân vật phụ thông minh
     raw_num = inputs.get('num_support')
     support_instr = ""
-    
     if raw_num and str(raw_num).strip(): 
-        # Nếu người dùng CÓ nhập số lượng
         try:
             num = int(raw_num)
             if num > 0:
                 support_instr = f"- **Supporting Characters:** Include exactly {num} supporting character(s). Ensure meaningful interaction and dialogue with the Main Character."
             else:
-                # Nếu nhập 0 -> Chỉ độc thoại
                 support_instr = "- **Supporting Characters:** No supporting characters. Focus on the main character's internal thoughts and actions."
         except:
-            # Nhập lỗi -> Mặc định
             support_instr = "- **Supporting Characters:** Automatically introduce 1-2 supporting characters. **MANDATORY:** Include natural dialogue interactions between them and the Main Character."
     else:
-        # Nếu ĐỂ TRỐNG -> Tự động thêm 1-2 người + Bắt buộc có thoại
         support_instr = "- **Supporting Characters:** Automatically introduce 1-2 supporting characters (e.g., a friend, a family member, or a stranger). **MANDATORY:** Include natural dialogue interactions between them and the Main Character to drive the plot."
 
-    # 2. Từ khóa cấm (Negative Keywords)
     negative_instr = ""
     if inputs.get('negative_keywords'):
-        negative_instr = f"- **NEGATIVE CONSTRAINTS:** Strictly AVOID the following words or topics: {inputs['negative_keywords']}."
+        negative_instr = f"- **NEGATIVE CONSTRAINTS:** Strictly AVOID: {inputs['negative_keywords']}."
 
-    # 3. Phong cách viết (Style)
-    style_instr = ""
+    user_style_instr = ""
     if inputs.get('style_samples'):
-        # style_samples chứa nội dung text của style
-        # Lấy 500 ký tự đầu để làm mẫu cho AI
         style_sample_text = inputs['style_samples'][:500].replace("\n", " ")
-        style_instr = f"- **WRITING STYLE MIMICRY:** Analyze and mimic the tone/style of this sample text: '{style_sample_text}...'"
+        user_style_instr = f"- **USER OVERRIDE STYLE:** MIMIC this specific tone: '{style_sample_text}...'"
 
+    # --- 4. MASTER PROMPT ---
     prompt = f"""
     **Role:** Best-selling Author of Graded Readers.
     **Goal:** Write a {structure_type} that is engaging, emotional, and educational.
@@ -270,92 +303,21 @@ def create_prompt_for_ai(inputs):
     1. **OPENING & STRUCTURE:** - {opening_rule}
        - {structure_instr}
     
-    2. **VOCABULARY INTEGRATION (STRICT):**
+    2. **VOCABULARY INTEGRATION:**
        - **Target Words:** [{vocab_list_str}]
        - {repetition_rule}
-       - **FORBIDDEN:** Do NOT use backticks (`), bold (**), quotes (""), or underlines to highlight target words. Write them exactly like normal text.
+       - Do NOT use backticks/bold for target words.
     
     3. {setting_instr}
     
-    4. **GRAMMAR & TONE:** - **Grammar Level:** {CEFR_LEVEL_GUIDELINES.get(cefr_level, "Standard grammar")}
-       - **Tone:** Encouraging, Relatable, Human.
+    4. **GRAMMAR & TONE:**
+       - **Grammar Level:** {CEFR_LEVEL_GUIDELINES.get(cefr_level, "Standard grammar")}
+       {style_selection_instr}
     
     5. **ADDITIONAL CONSTRAINTS:**
        {negative_instr}
-       {style_instr}
-
-    6.**LANGUAGE:** Write in standard English. Use English terms for family members (Mom, Dad, Grandma) unless strictly instructed otherwise.
-
-    **OUTPUT FORMAT:**
-
-    # [Creative Title]
-
-    [Story content...]
-
-    ---
-    Graded Definitions ({cefr_level})
-    *Format:*
-    - word: definition.
-    """
-    return prompt
-
-    # --- XỬ LÝ OPTIONAL INPUTS (Magic Dust) ---
-    
-    # 1. Số nhân vật phụ
-    support_instr = ""
-    if inputs.get('num_support'):
-        try:
-            num = int(inputs['num_support'])
-            if num > 0:
-                support_instr = f"- **Supporting Characters:** Include exactly {num} supporting character(s) to interact with the Main Character."
-        except: pass
-
-    # 2. Từ khóa cấm (Negative Keywords)
-    negative_instr = ""
-    if inputs.get('negative_keywords'):
-        negative_instr = f"- **NEGATIVE CONSTRAINTS:** Strictly AVOID the following words or topics: {inputs['negative_keywords']}."
-
-    # 3. Phong cách viết (Style)
-    style_instr = ""
-    if inputs.get('style_samples'):
-        # style_samples chứa nội dung text của style
-        # Lấy 500 ký tự đầu để làm mẫu cho AI
-        style_sample_text = inputs['style_samples'][:500].replace("\n", " ")
-        style_instr = f"- **WRITING STYLE MIMICRY:** Analyze and mimic the tone/style of this sample text: '{style_sample_text}...'"
-
-    prompt = f"""
-    **Role:** Best-selling Author of Graded Readers.
-    **Goal:** Write a {structure_type} that is engaging, emotional, and educational.
-    
-    **CORE INPUTS:**
-    - Level: {cefr_level}
-    - Length: ~{word_count} words.
-    - Theme: {inputs['theme']}
-    - Main Character: {inputs.get('main_char', 'A relatable character')}
-    {support_instr}
-    
-    **MANDATORY GUIDELINES:**
-    
-    1. **OPENING & STRUCTURE:** - {opening_rule}
-       - {structure_instr}
-    
-    2. **VOCABULARY INTEGRATION (STRICT):**
-       - **Target Words:** [{vocab_list_str}]
-       - {repetition_rule}
-       - **FORBIDDEN:** Do NOT use backticks (`), bold (**), quotes (""), or underlines to highlight target words. Write them exactly like normal text.
-
-    3. **STORYTELLING:** - **Show, Don't Tell:** Instead of saying "He was sad", describe his actions.
-       - **Inner Monologue:** Show what the character is thinking/feeling. (Example: "This is a disaster," he thought)
-       - **Dialogue:** Use natural conversation to advance the plot.
-       
-    4. {setting_instr}
-    
-    5. **GRAMMAR & TONE:** - **Grammar Level:** {CEFR_LEVEL_GUIDELINES.get(cefr_level, "Standard grammar")}
-       - **Tone:** Encouraging, Relatable, Human.
-    
-    6. **ADDITIONAL CONSTRAINTS:**
-       {negative_instr}
-       {style_instr}
+       {user_style_instr}
+       - **LANGUAGE:** Write in standard English. Use English terms for family members (Mom, Dad, Grandma) unless strictly instructed otherwise.
 
     **OUTPUT FORMAT:**
 
@@ -423,26 +385,27 @@ def create_pedagogical_quiz_prompt(story_content, quiz_preference):
 
     **STRUCTURE:**
 
-    🎓 PEDAGOGICAL WORKSHEET
+    ## 🎓 PEDAGOGICAL WORKSHEET
 
-    PART 1: CONTROLLED PRACTICE (Recall)
+    ### PART 1: CONTROLLED PRACTICE (Recall)
     *Format:* Based on '{quiz_preference}' (mcq/tf/mix/open).
     - Create 5 questions.
 
-    PART 2: LESS CONTROLLED PRACTICE (Vocabulary)
+    ### PART 2: LESS CONTROLLED PRACTICE (Vocabulary)
     *Format:* **Gap Fill**.
     - Create a short summary text with 5-6 blanks.
     - **CRITICAL:** Provide the Word Bank on a SINGLE LINE exactly like this format:
       `[[WORD BANK: word1, word2, word3, word4, word5, distractor1]]`
     - (Do not use Markdown tables for the word bank).
 
-    PART 3: FREE PRACTICE (Production)
+    ### PART 3: FREE PRACTICE (Production)
     1. **Discussion:** 1 Open-ended question connecting to real life.
     2. **Creative Writing:** 1 Prompt (rewrite ending, dialogue, etc.).
 
     **ANSWER KEY (At the bottom)**
     - Answers for Part 1 & 2.
     """
+
 # --- 5. ROUTES ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -499,7 +462,6 @@ def handle_generation():
     if not api_key: return jsonify({"story_result": "API Key Missing"}), 500
     data = request.form
     
-    # --- XỬ LÝ STYLE (Lấy nội dung từ DB) ---
     selected_style_names = request.form.getlist('selected_styles')
     style_content_str = ""
     if selected_style_names:
@@ -520,21 +482,16 @@ def handle_generation():
         "num_support": data.get('num_support_char')
     }
     
-    # 1. TẠO TRUYỆN
     prompt = create_prompt_for_ai(inputs)
     story_content = generate_story_ai(api_key, prompt)
     
     if "ERROR" in story_content:
         return jsonify({"story_result": story_content})
 
-    # 2. TỰ ĐỘNG TẠO QUIZ (ĐOẠN NÀY QUAN TRỌNG NÈ)
     quiz_type = data.get('quiz_type')
     if quiz_type and quiz_type != 'none':
-        # Gọi AI lần 2 để tạo Quiz
         quiz_prompt = create_pedagogical_quiz_prompt(story_content, quiz_type)
         quiz_content = generate_story_ai(api_key, quiz_prompt)
-        
-        # Gộp vào nội dung truyện (Sửa lại lỗi chính tả WORKSHEET)
         story_content += f"\n\n\n{'='*20}\n## 🎓 PEDAGOGICAL WORKSHEET\n{'='*20}\n\n{quiz_content}"
 
     return jsonify({"story_result": story_content})
@@ -546,14 +503,11 @@ def create_comic_direct(story_id):
     api_key = configure_ai()
     
     try:
-        # --- BƯỚC 1: LỌC NỘI DUNG (MỚI) ---
-        # Chỉ lấy phần truyện, bỏ phần Quiz (nếu có)
         clean_story_content = story.content
         separator = "## 🎓 PEDAGOGICAL WORKSHEET"
         if separator in clean_story_content:
             clean_story_content = clean_story_content.split(separator)[0]
 
-        # --- BƯỚC 2: LẤY THÔNG TIN NHÂN VẬT ---
         char_desc = "A relatable character"
         try:
             if story.prompt_data:
@@ -565,7 +519,6 @@ def create_comic_direct(story_id):
             
         consistency_prompt = f"IDENTITY: {char_desc}. (Keep facial features, hair style, and clothing EXACTLY the same in every shot)."
 
-        # --- BƯỚC 3: GỌI AI (Dùng clean_story_content thay vì story.content) ---
         ai_response_text = generate_story_ai(api_key, create_comic_script_prompt(clean_story_content))
         data = robust_json_extract(ai_response_text)
         
@@ -578,7 +531,6 @@ def create_comic_direct(story_id):
 
         final_panels = []
 
-        # --- BƯỚC 3: TẠO PROMPT ---
         for panel in panels_data:
             raw_action = panel.get('visual_description') or panel.get('description') or "Scene"
             for w in ["comic", "panel", "page", "grid", "speech bubble", "text"]: 
@@ -718,7 +670,6 @@ def handle_translation():
     }
     return jsonify({"story_result": generate_story_ai(api_key, create_translation_prompt(inputs))})
 
-# --- ROUTE MỚI: TẠO QUIZ SƯ PHẠM (Dành cho trang Saved Stories - Giữ lại) ---
 @app.route('/add-quiz-to-saved', methods=['POST'])
 @login_required
 def add_quiz_to_saved():
@@ -726,16 +677,9 @@ def add_quiz_to_saved():
     if s and s.user_id == current_user.id:
         quiz_type = request.form.get('quiz_type')
         api_key = configure_ai()
-        
-        # Gọi hàm tạo prompt sư phạm (đã thêm ở trên)
         prompt = create_pedagogical_quiz_prompt(s.content, quiz_type)
-        
-        # Gọi AI tạo nội dung
         quiz_content = generate_story_ai(api_key, prompt)
-        
-        # Lưu vào DB (Nối tiếp vào truyện)
         s.content += f"\n\n\n{'='*20}\n## 🎓 PEDAGOGICAL WORKSHEET\n{'='*20}\n\n{quiz_content}"
-        
         db.session.commit()
     return redirect(url_for('saved_stories_page'))
 
@@ -800,10 +744,3 @@ def reset_password():
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
     app.run(debug=True, port=5000)
-
-
-
-
-
-
-
