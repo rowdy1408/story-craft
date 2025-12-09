@@ -274,31 +274,50 @@
         const lines = text.split('\n');
         let html = '<div class="formatted-story-container">';
         
-        let isFirstContentLine = true; 
+        let isFirstContentLine = true;
+        let isInsideTable = false; // Cờ theo dõi xem có đang kẹt trong bảng không
+        let collectedWords = [];   // Kho chứa từ vựng thu lượm được
 
-        lines.forEach(line => {
-            let trimmed = line.trim();
-            if (!trimmed) return;
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
+            if (!line) continue;
 
-            // Bỏ qua câu chào của AI
-            if (trimmed.startsWith("Of course") || trimmed.startsWith("Here is")) return;
+            // LỌC RÁC
+            if (line.startsWith("Of course") || line.startsWith("Here is")) continue;
 
-            // 1. Tiêu đề truyện (Dòng đầu)
-            if (isFirstContentLine && !trimmed.startsWith('#')) {
-                html += `<h1 class="story-title">${trimmed}</h1>`;
-                isFirstContentLine = false;
-                return;
+            // --- A. XỬ LÝ WORD BANK (Dạng Bảng Markdown: | Word Bank |...) ---
+            if (line.includes('| Word Bank |') || line.includes('|:---:|')) {
+                isInsideTable = true; 
+                continue; // Bỏ qua dòng tiêu đề bảng
             }
-            if (isFirstContentLine && trimmed.startsWith('#')) {
-                 let cleanTitle = trimmed.replace(/^[#*]+/, '').trim();
-                 html += `<h1 class="story-title">${cleanTitle}</h1>`;
-                 isFirstContentLine = false;
-                 return;
+            
+            if (isInsideTable) {
+                // Nếu dòng bắt đầu bằng | -> Đang ở trong bảng, lấy từ ra
+                if (line.startsWith('|')) {
+                    // Tách từ trong các ô | trip | -> trip
+                    let parts = line.split('|').filter(w => w.trim() !== '');
+                    parts.forEach(w => collectedWords.push(w.trim()));
+                    continue;
+                } else {
+                    // Hết bảng -> In cái hộp đẹp ra ngay!
+                    if (collectedWords.length > 0) {
+                        html += `
+                        <div class="word-bank-container">
+                            <div class="word-bank-title"><i class="bi bi-box-seam-fill"></i> Word Bank</div>
+                            <div class="word-bank-grid">
+                                ${collectedWords.map(w => `<span class="word-chip">${w}</span>`).join('')}
+                            </div>
+                        </div>`;
+                        collectedWords = []; // Reset kho
+                    }
+                    isInsideTable = false; // Thoát chế độ bảng
+                }
             }
 
-            // 2. XỬ LÝ WORD BANK (Cái bảng đẹp)
-            if (trimmed.startsWith('[[WORD BANK:') && trimmed.endsWith(']]')) {
-                let wordsContent = trimmed.substring(12, trimmed.length - 2);
+            // --- B. XỬ LÝ WORD BANK (Dạng Dòng đơn: [[WORD BANK:...]]) ---
+            // (Phòng hờ AI quay xe làm đúng hướng dẫn cũ)
+            if (line.startsWith('[[WORD BANK:') && line.endsWith(']]')) {
+                let wordsContent = line.substring(12, line.length - 2);
                 let words = wordsContent.split(',').map(w => w.trim());
                 html += `
                 <div class="word-bank-container">
@@ -307,42 +326,67 @@
                         ${words.map(w => `<span class="word-chip">${w}</span>`).join('')}
                     </div>
                 </div>`;
-                return;
+                continue;
             }
 
-            // 3. Xử lý các tiêu đề phụ
-            if (trimmed.startsWith('#') || trimmed.toUpperCase().startsWith('CHAPTER') || trimmed.includes('Graded Definitions') || trimmed.startsWith('PART ')) {
-                let headerText = trimmed.replace(/^#+\s*/, '').replace(/\*\*/g, '');
+            // --- C. XỬ LÝ CÁC PHẦN KHÁC (NHƯ CŨ) ---
+            
+            // 1. Tiêu đề truyện
+            if (isFirstContentLine && !line.startsWith('#')) {
+                html += `<h1 class="story-title">${line}</h1>`;
+                isFirstContentLine = false;
+                continue;
+            }
+            if (isFirstContentLine && line.startsWith('#')) {
+                 let cleanTitle = line.replace(/^[#*]+/, '').trim();
+                 html += `<h1 class="story-title">${cleanTitle}</h1>`;
+                 isFirstContentLine = false;
+                 continue;
+            }
+
+            // 2. Tiêu đề phụ (Quiz, Chapter...)
+            if (line.startsWith('#') || line.toUpperCase().startsWith('CHAPTER') || line.includes('Graded Definitions') || line.startsWith('PART ')) {
+                let headerText = line.replace(/^#+\s*/, '').replace(/\*\*/g, '');
                 
-                if (trimmed.includes('PEDAGOGICAL WORKSHEET') || trimmed.includes('QUIZ')) {
+                if (line.includes('PEDAGOGICAL WORKSHEET') || line.includes('QUIZ')) {
                      html += `<h2 class="story-chapter" style="color: #d35400; margin-top: 50px; border-bottom: 2px solid #d35400; padding-bottom: 10px;">${headerText}</h2>`;
                 } 
-                else if (trimmed.toUpperCase().startsWith('PART') || trimmed.startsWith('##')) {
+                else if (line.toUpperCase().startsWith('PART') || line.startsWith('##')) {
                      html += `<h3 style="font-family: 'Times New Roman'; font-weight: bold; margin-top: 30px; font-size: 1.4rem; color: #2c3e50;">${headerText}</h3>`;
                 }
                 else {
                      html += `<h2 class="story-chapter">${headerText}</h2>`;
                 }
             } 
-            // 4. Kẻ ngang
-            else if (trimmed.startsWith('---') || trimmed.startsWith('===')) {
+            // 3. Kẻ ngang
+            else if (line.startsWith('---') || line.startsWith('===')) {
                 html += `<hr style="margin: 30px 0; border-top: 2px dashed #ccc;">`;
             } 
-            // 5. Nội dung thường
+            // 4. Nội dung thường
             else {
-                let content = trimmed.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-                if (trimmed.startsWith('-') || trimmed.startsWith('*') || /^\d+\./.test(trimmed)) {
+                let content = line.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+                if (line.startsWith('-') || line.startsWith('*') || /^\d+\./.test(line)) {
                      html += `<p class="story-body" style="text-indent: 0 !important; margin-left: 20px;">${content}</p>`;
                 } else {
                      html += `<p class="story-body">${content}</p>`;
                 }
             }
-        });
+        } // End Loop
+
+        // (Xử lý trường hợp bảng nằm cuối cùng file)
+        if (collectedWords.length > 0) {
+            html += `
+            <div class="word-bank-container">
+                <div class="word-bank-title"><i class="bi bi-box-seam-fill"></i> Word Bank</div>
+                <div class="word-bank-grid">
+                    ${collectedWords.map(w => `<span class="word-chip">${w}</span>`).join('')}
+                </div>
+            </div>`;
+        }
 
         html += '</div>';
         return html;
     }
-
     document.addEventListener("DOMContentLoaded", function() {
         const storyDivs = document.querySelectorAll('.story-reader-view');
         storyDivs.forEach(div => {
@@ -353,5 +397,6 @@
     });
 </script>
 {% endblock %}
+
 
 
