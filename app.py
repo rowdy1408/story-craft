@@ -301,40 +301,37 @@ def create_pedagogical_quiz_prompt(story_content, quiz_preference):
     Tạo prompt theo chuẩn sư phạm: Controlled -> Less Controlled -> Free Practice
     """
     return f"""
-    **Role:** Expert ESL/EFL Teacher & Curriculum Designer.
-    **Task:** Create a comprehensive 3-stage reading comprehension quiz based on the story below.
+    **Role:** Quiz Generator Engine.
+    **MODE:** STRICT OUTPUT ONLY.
+    **RULE:** Do NOT write any conversational text (e.g., "Here is the quiz", "As an expert..."). Start immediately with the content.
+    
+    **Task:** Create a 3-stage quiz for the story below.
     
     **INPUT STORY:**
     {story_content}
 
-    **PEDAGOGICAL STRUCTURE (STRICTLY FOLLOW THIS):**
+    **STRUCTURE:**
 
-    **PART 1: CONTROLLED PRACTICE (Focus: Accuracy & Recall)**
-    * *Goal:* Check basic understanding of facts and vocabulary.
-    * *Format:* Based on user preference: '{quiz_preference}'.
-        - If 'mcq': Create 5 Multiple Choice Questions with 4 options (A,B,C,D).
-        - If 'tf': Create 5 True/False statements.
-        - If 'mix': Create 3 MCQ and 3 True/False.
-        - If 'open': (Override) Create 5 short-answer questions requiring exact details from text.
+    🎓 PEDAGOGICAL WORKSHEET
 
-    **PART 2: LESS CONTROLLED PRACTICE (Focus: Language Use)**
-    * *Goal:* Test vocabulary/grammar in context.
-    * *Format:* **Gap Fill (Cloze Test)**.
-        - Select a summary paragraph or a key excerpt from the story.
-        - Remove 5-6 key words (verbs, adjectives, or target vocab).
-        - Provide a "Word Bank" box containing the missing words.
+    PART 1: CONTROLLED PRACTICE (Recall)
+    *Format:* Based on '{quiz_preference}' (mcq/tf/mix/open).
+    - Create 5 questions.
 
-    **PART 3: FREE PRACTICE (Focus: Production & Critical Thinking)**
-    * *Goal:* Encourage personal expression and creative writing.
-    * *Format:*
-        1. **Discussion:** 1 Open-ended question connecting the story theme to the student's real life.
-        2. **Creative Writing:** 1 Prompt asking to rewrite the ending, describe a character, or write a dialogue.
+    PART 2: LESS CONTROLLED PRACTICE (Vocabulary)
+    *Format:* **Gap Fill**.
+    - Create a short summary text with 5-6 blanks.
+    - **CRITICAL:** Provide the Word Bank on a SINGLE LINE exactly like this format:
+      `[[WORD BANK: word1, word2, word3, word4, word5, distractor1]]`
+    - (Do not use Markdown tables for the word bank).
 
-    **OUTPUT FORMAT:**
-    - Use clear Markdown headers (###).
-    - **ANSWER KEY:** Provide the answers for Part 1 and Part 2 at the very bottom, hidden inside a collapsible section or separated by a line.
+    PART 3: FREE PRACTICE (Production)
+    1. **Discussion:** 1 Open-ended question connecting to real life.
+    2. **Creative Writing:** 1 Prompt (rewrite ending, dialogue, etc.).
+
+    **ANSWER KEY (At the bottom)**
+    - Answers for Part 1 & 2.
     """
-
 # --- 5. ROUTES ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -693,3 +690,4 @@ def reset_password():
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
     app.run(debug=True, port=5000)
+
