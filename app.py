@@ -172,7 +172,32 @@ def create_prompt_for_ai(inputs):
     setting_val = inputs['setting'].strip()
     setting_instr = f"**SETTING:** {setting_val}" if setting_val else "**SETTING:** A realistic setting in Vietnam. Atmosphere is key."
 
-    if word_count < 400:
+    # --- LOGIC CẤU TRÚC MỚI (UPDATE) ---
+    target_audience = inputs.get('target_audience', 'General')
+
+    # 1. Ưu tiên Picture Book cho Trẻ em & Level thấp
+    if target_audience == 'Children' and cefr_level in ["PRE A1", "A1", "A2"]:
+        structure_type = "PICTURE BOOK"
+        
+        # Tính số trang linh hoạt dựa trên số từ (để mỗi trang khoảng 30-40 từ)
+        if word_count < 150:
+            num_pages = "4-5"   # Truyện rất ngắn -> 4-5 trang
+        elif word_count < 300:
+            num_pages = "6-8"   # Truyện vừa -> 6-8 trang
+        else:
+            num_pages = "8-10"  # Truyện dài -> 8-10 trang
+            
+        structure_instr = f"""
+        **STRUCTURE: PICTURE BOOK FORMAT**
+        - Divide the story into **{num_pages} PAGES** (based on word count).
+        - Label each part clearly as: `--- PAGE [X] ---`
+        - **IMPORTANT:** Write a meaningful paragraph (3-5 sentences) for each page. Avoid single-line pages to ensure rich content.
+        - Ensure good flow between pages.
+        """
+        opening_rule = "Start with a **# Title**. Then immediately start with `--- PAGE 1 ---`."
+
+    # 2. Truyện ngắn (Viết liền - Dành cho người lớn hoặc level cao nhưng truyện ngắn)
+    elif word_count < 400:
         structure_type = "SHORT STORY (Continuous)"
         structure_instr = """
         **STRUCTURE: CONTINUOUS STORY**
@@ -181,6 +206,8 @@ def create_prompt_for_ai(inputs):
         - Organize into clear paragraphs.
         """
         opening_rule = "Start with a **# Title**. Then immediately start the story text."
+
+    # 3. Truyện dài (Chia chương - Dành cho truyện dài > 400 từ)
     else:
         structure_type = "CHAPTER BOOK"
         structure_instr = """
@@ -191,6 +218,73 @@ def create_prompt_for_ai(inputs):
         opening_rule = "Start with a **# Title**. Immediately follow with **CHAPTER 1**. Introduce the character INSIDE Chapter 1."
 
     repetition_rule = "Weave target words into the story naturally (approx 3-5 times each)."
+
+    # --- XỬ LÝ OPTIONAL INPUTS (Magic Dust) ---
+    
+    # 1. Số nhân vật phụ
+    support_instr = ""
+    if inputs.get('num_support'):
+        try:
+            num = int(inputs['num_support'])
+            if num > 0:
+                support_instr = f"- **Supporting Characters:** Include exactly {num} supporting character(s) to interact with the Main Character."
+        except: pass
+
+    # 2. Từ khóa cấm (Negative Keywords)
+    negative_instr = ""
+    if inputs.get('negative_keywords'):
+        negative_instr = f"- **NEGATIVE CONSTRAINTS:** Strictly AVOID the following words or topics: {inputs['negative_keywords']}."
+
+    # 3. Phong cách viết (Style)
+    style_instr = ""
+    if inputs.get('style_samples'):
+        # style_samples chứa nội dung text của style
+        # Lấy 500 ký tự đầu để làm mẫu cho AI
+        style_sample_text = inputs['style_samples'][:500].replace("\n", " ")
+        style_instr = f"- **WRITING STYLE MIMICRY:** Analyze and mimic the tone/style of this sample text: '{style_sample_text}...'"
+
+    prompt = f"""
+    **Role:** Best-selling Author of Graded Readers.
+    **Goal:** Write a {structure_type} that is engaging, emotional, and educational.
+    
+    **CORE INPUTS:**
+    - Level: {cefr_level}
+    - Length: ~{word_count} words.
+    - Theme: {inputs['theme']}
+    - Main Character: {inputs.get('main_char', 'A relatable character')}
+    {support_instr}
+    
+    **MANDATORY GUIDELINES:**
+    
+    1. **OPENING & STRUCTURE:** - {opening_rule}
+       - {structure_instr}
+    
+    2. **VOCABULARY INTEGRATION (STRICT):**
+       - **Target Words:** [{vocab_list_str}]
+       - {repetition_rule}
+       - **FORBIDDEN:** Do NOT use backticks (`), bold (**), quotes (""), or underlines to highlight target words. Write them exactly like normal text.
+    
+    3. {setting_instr}
+    
+    4. **GRAMMAR & TONE:** - **Grammar Level:** {CEFR_LEVEL_GUIDELINES.get(cefr_level, "Standard grammar")}
+       - **Tone:** Encouraging, Relatable, Human.
+    
+    5. **ADDITIONAL CONSTRAINTS:**
+       {negative_instr}
+       {style_instr}
+
+    **OUTPUT FORMAT:**
+
+    # [Creative Title]
+
+    [Story content...]
+
+    ---
+    Graded Definitions ({cefr_level})
+    *Format:*
+    - word: definition.
+    """
+    return prompt
 
     # --- XỬ LÝ OPTIONAL INPUTS (Magic Dust) ---
     
@@ -693,6 +787,7 @@ def reset_password():
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
     app.run(debug=True, port=5000)
+
 
 
 
