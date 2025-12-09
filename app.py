@@ -393,7 +393,6 @@ def handle_generation():
     style_content_str = ""
     if selected_style_names:
         styles = Style.query.filter(Style.name.in_(selected_style_names)).all()
-        # Gộp nội dung các style lại để AI tham khảo
         style_content_str = "\n".join([s.content for s in styles])
 
     inputs = {
@@ -404,7 +403,7 @@ def handle_generation():
         "theme": data.get('theme'),
         "main_char": data.get('main_char'), 
         "setting": data.get('setting'),
-        "style_samples": style_content_str, # Truyền nội dung style vào
+        "style_samples": style_content_str,
         "negative_keywords": data.get('negative_keywords'),
         "target_audience": data.get('target_audience'), 
         "num_support": data.get('num_support_char')
@@ -417,14 +416,14 @@ def handle_generation():
     if "ERROR" in story_content:
         return jsonify({"story_result": story_content})
 
-    # 2. XỬ LÝ QUIZ (NẾU ĐƯỢC CHỌN)
+    # 2. TỰ ĐỘNG TẠO QUIZ (ĐOẠN NÀY QUAN TRỌNG NÈ)
     quiz_type = data.get('quiz_type')
     if quiz_type and quiz_type != 'none':
-        # Tạo prompt cho Quiz dựa trên nội dung truyện vừa có
+        # Gọi AI lần 2 để tạo Quiz
         quiz_prompt = create_pedagogical_quiz_prompt(story_content, quiz_type)
         quiz_content = generate_story_ai(api_key, quiz_prompt)
         
-        # Gộp Quiz vào cuối truyện để hiển thị luôn
+        # Gộp vào nội dung truyện (Sửa lại lỗi chính tả WORKSHEET)
         story_content += f"\n\n\n{'='*20}\n## 🎓 PEDAGOGICAL WORKSHEET\n{'='*20}\n\n{quiz_content}"
 
     return jsonify({"story_result": story_content})
@@ -690,4 +689,5 @@ def reset_password():
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
     app.run(debug=True, port=5000)
+
 
