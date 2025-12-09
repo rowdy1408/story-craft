@@ -8,7 +8,7 @@
     body { background-color: #f0f2f5; scroll-behavior: smooth; }
     .studio-container { max-width: 1200px; margin: 30px auto; padding-bottom: 100px; }
     
-    /* STICKY TOOLBAR (THANH CÔNG CỤ NỔI) */
+    /* STICKY TOOLBAR */
     .sticky-toolbar {
         position: sticky; top: 20px; z-index: 1000;
         background: rgba(255, 255, 255, 0.95);
@@ -21,8 +21,6 @@
         display: flex; justify-content: space-between; align-items: center;
         transition: all 0.3s ease;
     }
-    .sticky-toolbar.collapsed { transform: translateY(-150%); }
-    
     .char-badge {
         background: #e3f2fd; color: #0d47a1; 
         padding: 5px 12px; border-radius: 20px; 
@@ -90,29 +88,59 @@
     }
     .upload-zone:hover { background: rgba(255,255,255,0.05); border-color: #f1c40f; color: #fff; }
 
-    /* UTILS */
     .d-none { display: none !important; }
     .d-block { display: block !important; }
     .print-cover-page, .print-back-cover { display: none; }
 
-    /* --- PRINT MODE --- */
+    /* --- PRINT MODE (CẤU HÌNH IN ẤN) --- */
     @media print {
         @page { size: A4 landscape; margin: 0 !important; }
         html, body { width: 297mm; height: auto !important; margin: 0 !important; padding: 0 !important; background-color: white !important; overflow: visible !important; display: block !important; }
-        .sticky-toolbar, nav, .btn, .alert, .master-prompt-box, .upload-zone, .prompt-box, label, .edit-btn, h1, .no-image-print, .badge, span.badge, .back-cover-data-row, .studio-container > div:first-child, .btn-copy-prompt { display: none !important; }
+        
+        /* ẨN CÁC PHẦN TỬ THỪA KHI IN */
+        .sticky-toolbar, nav, .btn, .alert, .master-prompt-box, .upload-zone, .prompt-box, label, .edit-btn, h1, .no-image-print, .badge, span.badge, .back-cover-data-row, .studio-container > div:first-child, .btn-copy-prompt, .prompt-container, .text-muted { display: none !important; }
+        
+        /* Ẩn dòng chữ 'Use previous image...' bằng class d-print-none */
+        .d-print-none { display: none !important; }
+
         .studio-container { width: 100% !important; margin: 0 !important; padding: 0 !important; max-width: none !important; display: block !important; }
-        .print-cover-page, .panel-row, .print-back-cover { width: 297mm !important; height: 210mm !important; break-after: page !important; page-break-after: always !important; page-break-inside: avoid !important; display: flex !important; flex-direction: column; justify-content: center; align-items: center; margin: 0 !important; padding: 0 !important; position: relative; left: 0 !important; border-radius: 0 !important; box-shadow: none !important; border: none !important; }
-        /* (Giữ nguyên CSS in ấn cũ của bạn ở đây nếu cần chi tiết hơn) */
+        
+        .print-cover-page, .panel-row, .print-back-cover { 
+            width: 297mm !important; height: 210mm !important; 
+            break-after: page !important; page-break-after: always !important; 
+            page-break-inside: avoid !important; display: flex !important; 
+            flex-direction: column; justify-content: center; align-items: center; 
+            margin: 0 !important; padding: 0 !important; position: relative; left: 0 !important; 
+            border-radius: 0 !important; box-shadow: none !important; border: none !important; 
+        }
+        
+        /* COVER PAGE */
         .print-cover-page { background-color: #0d3b66 !important; color: white !important; border: 15px solid #fdf6e3 !important; box-sizing: border-box !important; }
         .cover-content-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; margin-top: 20px; }
-        .print-cover-title { font-size: 3.5rem; font-weight: bold; text-align: center; }
+        .cover-top-bar { background-color: #f1c40f; color: #0d3b66; padding: 10px 40px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; border-radius: 0 0 15px 15px; font-family: sans-serif; position: absolute; top: 0; z-index: 10; }
+        .print-cover-title { font-size: 3.5rem; font-weight: bold; text-align: center; margin-bottom: 20px; line-height: 1.1; font-family: 'Playfair Display', serif; text-shadow: 3px 3px 0px #000; max-width: 90%; }
+        
         .cover-image-container { width: 50%; height: 110mm; background-color: #fff; border: 5px solid #f1c40f; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 20px; }
         .cover-image-img { width: 100%; height: 100%; object-fit: cover; }
-        .panel-preview { order: 1; width: 100%; height: 65%; background: none !important; border: none !important; }
-        .comic-image { max-width: 95%; max-height: 100%; border: 3px solid #333 !important; }
-        .panel-info { order: 2; width: 100%; height: 25%; border: 2px solid #333 !important; background-color: #fff9c4 !important; padding: 15px !important; border-radius: 12px; }
-        .caption-text { font-size: 16pt; line-height: 1.3; color: #000; border: none !important; }
+        .print-cover-subtitle { font-size: 1.2rem; font-style: italic; opacity: 0.9; }
+        
+        /* PANEL PAGES */
+        .panel-row { background: white !important; border: none !important; padding: 10mm 20mm !important; box-sizing: border-box !important; }
+        .panel-preview { order: 1; width: 100%; height: 65%; display: flex; align-items: center; justify-content: center; background: none !important; border: none !important; margin-bottom: 10px; }
+        .comic-image { max-width: 95%; max-height: 100%; object-fit: contain; border: 3px solid #333 !important; box-shadow: 5px 5px 0px #eee; }
+        
+        /* Chỉ hiện caption trong panel-info khi in */
+        .panel-info { 
+            order: 2; width: 100%; height: 25%; text-align: center; 
+            border: 2px solid #333 !important; background-color: #fff9c4 !important; 
+            padding: 15px !important; border-radius: 12px; 
+            display: flex; align-items: center; justify-content: center; 
+        }
+        .caption-text { font-size: 16pt; line-height: 1.3; color: #000; font-family: 'Comic Neue', cursive, sans-serif; font-weight: bold; border: none !important; margin: 0 !important; padding: 0 !important; }
         .page-number-print { position: absolute; bottom: 5mm; font-size: 10pt; color: #aaa; }
+        
+        /* BACK COVER */
+        .print-back-cover { background-color: #fdf6e3 !important; color: #333 !important; padding: 40px !important; border: 15px solid #0d3b66; box-sizing: border-box !important; justify-content: space-between; }
     }
 </style>
 {% endblock %}
@@ -145,11 +173,17 @@
     <input type="hidden" id="full-char-desc" value="">
 
     <div class="print-cover-page">
+        <div class="cover-top-bar">Graded Readers Library</div>
         <div class="cover-content-wrapper"> 
             <div class="print-cover-title">{{ title }}</div>
             <div class="cover-image-container">
                 {% if panels|length > 0 and panels[0].image_url %}
                     <img src="{{ panels[0].image_url }}" class="cover-image-img">
+                {% else %}
+                    <div class="d-print-none" style="color: #0d3b66; text-align: center;">
+                        <i class="bi bi-image" style="font-size: 3rem;"></i>
+                        <p>Cover Image (Panel 1)<br>Not uploaded yet</p>
+                    </div>
                 {% endif %}
             </div>
             <div class="print-cover-subtitle">Created with Story Weaver</div>
@@ -167,7 +201,7 @@
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <span class="badge bg-warning text-dark shadow-sm">PANEL {{ panel.panel_number }}</span>
                         {% if loop.index > 1 %}
-                            <small class="text-muted fst-italic"><i class="bi bi-arrow-up-circle"></i> Use previous image as ref!</small>
+                            <small class="text-muted fst-italic d-print-none"><i class="bi bi-arrow-up-circle"></i> Use previous image as ref!</small>
                         {% endif %}
                     </div>
                     
@@ -217,27 +251,34 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // 1. Tự động lấy Character Description từ Panel 1 để đưa lên thanh công cụ
         const firstPrompt = document.getElementById('prompt-text-1');
         if (firstPrompt) {
             const text = firstPrompt.innerText;
-            // Regex để bắt đoạn text giữa **[1] CHARACTER:** và **[2]
             const match = text.match(/\*\*\[1\] CHARACTER:\*\*(.*?)\*\*\[2\]/);
             if (match && match[1]) {
                 const charDesc = match[1].trim();
                 document.getElementById('full-char-desc').value = charDesc;
-                // Hiển thị đoạn ngắn gọn (cắt bớt nếu dài quá)
                 document.getElementById('char-desc-preview').innerText = charDesc.substring(0, 30) + "...";
             } else {
                 document.getElementById('char-desc-preview').innerText = "Main Character";
                 document.getElementById('full-char-desc').value = "Main Character";
             }
         }
+
+        const dataSpan = document.getElementById('back-data-json');
+        if (dataSpan) {
+            try {
+                const data = JSON.parse(dataSpan.innerText);
+                document.getElementById('print-summary').innerText = data.summary || "A wonderful story waiting for you.";
+                document.getElementById('print-theme').innerText = data.theme || "General";
+                document.getElementById('print-level').innerText = data.level || "Beginner";
+            } catch (e) { console.error("Back cover data error", e); }
+        }
     });
 
     function copyCharDesc() {
         const text = document.getElementById('full-char-desc').value;
-        navigator.clipboard.writeText(text).then(() => alert("Character info copied! Paste this if AI forgets the face."));
+        navigator.clipboard.writeText(text).then(() => alert("Character info copied!"));
     }
 
     function copyToClipboard(text, btnElement) {
@@ -246,7 +287,6 @@
             const originalIcon = btnElement.innerHTML;
             btnElement.innerHTML = '<i class="bi bi-check-lg"></i>';
             btnElement.classList.add('bg-success', 'text-white');
-            
             setTimeout(() => { 
                 btnElement.innerHTML = originalIcon; 
                 btnElement.classList.remove('bg-success', 'text-white');
@@ -254,7 +294,6 @@
         });
     }
 
-    // --- HÀM UPLOAD THÔNG MINH ---
     async function uploadImage(loopIndex, panelNum, fileInput) {
         if (!fileInput || !fileInput.files[0]) return;
 
@@ -273,7 +312,6 @@
             const data = await res.json();
             
             if (data.url) {
-                // 1. Hiển thị ảnh
                 const img = document.getElementById(`img-${loopIndex}`);
                 const editBtn = document.getElementById(`btn-edit-${loopIndex}`);
                 
@@ -282,25 +320,16 @@
                 container.classList.remove('d-block'); container.classList.add('d-none');
                 editBtn.classList.remove('d-none'); editBtn.classList.add('d-block');
 
-                // 2. LOGIC TỰ ĐỘNG CUỘN VÀ NHẮC NHỞ (SMART FLOW)
                 const nextIndex = parseInt(loopIndex) + 1;
                 const nextRow = document.getElementById(`panel-row-${nextIndex}`);
-                
                 if (nextRow) {
-                    // Highlight Panel tiếp theo
                     document.querySelectorAll('.panel-row').forEach(r => r.classList.remove('active-step'));
                     nextRow.classList.add('active-step');
-                    
-                    // Cuộn xuống mượt mà
                     nextRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-                    // Thông báo Toast (Optional - dùng alert cho đơn giản hoặc custom toast)
-                    // Ở đây mình dùng hiệu ứng visual focus vào panel tiếp theo là đủ tinh tế.
                 }
-
             } else { 
                 alert("Upload failed: " + data.error); 
-                container.innerHTML = originalContent; // Reset nếu lỗi
+                container.innerHTML = originalContent; 
             }
         } catch (e) { 
             console.error(e); 
@@ -314,10 +343,8 @@
         document.getElementById(`btn-edit-${loopIndex}`).classList.add('d-none');
         const ig = document.getElementById(`input-group-${loopIndex}`);
         ig.classList.remove('d-none'); ig.classList.add('d-block');
-        // Reset nội dung input file để có thể chọn lại file cũ
         const fileInput = document.getElementById(`file-input-${loopIndex}`);
         fileInput.value = ''; 
-        // Khôi phục giao diện upload
         ig.innerHTML = `<div class="mb-3"><i class="bi bi-cloud-arrow-up display-4"></i><p class="mt-2 mb-0">Drop image here or click</p></div><input type="file" class="form-control mb-2" id="file-input-${loopIndex}" accept="image/*" onchange="uploadImage('${loopIndex}', '${document.getElementById(`panel-row-${loopIndex}`).querySelector('.badge').innerText.replace('PANEL ', '')}', this)">`;
     }
 </script>
