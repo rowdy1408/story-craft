@@ -21,6 +21,7 @@
         display: flex; justify-content: space-between; align-items: center;
         transition: all 0.3s ease;
     }
+    
     .char-badge {
         background: #e3f2fd; color: #0d47a1; 
         padding: 5px 12px; border-radius: 20px; 
@@ -92,19 +93,16 @@
     .d-block { display: block !important; }
     .print-cover-page, .print-back-cover { display: none; }
 
-    /* --- PRINT MODE (CẤU HÌNH IN ẤN) --- */
+    /* --- PRINT MODE --- */
     @media print {
         @page { size: A4 landscape; margin: 0 !important; }
         html, body { width: 297mm; height: auto !important; margin: 0 !important; padding: 0 !important; background-color: white !important; overflow: visible !important; display: block !important; }
         
         /* ẨN CÁC PHẦN TỬ THỪA KHI IN */
         .sticky-toolbar, nav, .btn, .alert, .master-prompt-box, .upload-zone, .prompt-box, label, .edit-btn, h1, .no-image-print, .badge, span.badge, .back-cover-data-row, .studio-container > div:first-child, .btn-copy-prompt, .prompt-container, .text-muted { display: none !important; }
-        
-        /* Ẩn dòng chữ 'Use previous image...' bằng class d-print-none */
         .d-print-none { display: none !important; }
 
         .studio-container { width: 100% !important; margin: 0 !important; padding: 0 !important; max-width: none !important; display: block !important; }
-        
         .print-cover-page, .panel-row, .print-back-cover { 
             width: 297mm !important; height: 210mm !important; 
             break-after: page !important; page-break-after: always !important; 
@@ -114,22 +112,16 @@
             border-radius: 0 !important; box-shadow: none !important; border: none !important; 
         }
         
-        /* COVER PAGE */
         .print-cover-page { background-color: #0d3b66 !important; color: white !important; border: 15px solid #fdf6e3 !important; box-sizing: border-box !important; }
         .cover-content-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; margin-top: 20px; }
         .cover-top-bar { background-color: #f1c40f; color: #0d3b66; padding: 10px 40px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; border-radius: 0 0 15px 15px; font-family: sans-serif; position: absolute; top: 0; z-index: 10; }
         .print-cover-title { font-size: 3.5rem; font-weight: bold; text-align: center; margin-bottom: 20px; line-height: 1.1; font-family: 'Playfair Display', serif; text-shadow: 3px 3px 0px #000; max-width: 90%; }
-        
         .cover-image-container { width: 50%; height: 110mm; background-color: #fff; border: 5px solid #f1c40f; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 20px; }
         .cover-image-img { width: 100%; height: 100%; object-fit: cover; }
         .print-cover-subtitle { font-size: 1.2rem; font-style: italic; opacity: 0.9; }
-        
-        /* PANEL PAGES */
         .panel-row { background: white !important; border: none !important; padding: 10mm 20mm !important; box-sizing: border-box !important; }
         .panel-preview { order: 1; width: 100%; height: 65%; display: flex; align-items: center; justify-content: center; background: none !important; border: none !important; margin-bottom: 10px; }
         .comic-image { max-width: 95%; max-height: 100%; object-fit: contain; border: 3px solid #333 !important; box-shadow: 5px 5px 0px #eee; }
-        
-        /* Chỉ hiện caption trong panel-info khi in */
         .panel-info { 
             order: 2; width: 100%; height: 25%; text-align: center; 
             border: 2px solid #333 !important; background-color: #fff9c4 !important; 
@@ -138,8 +130,6 @@
         }
         .caption-text { font-size: 16pt; line-height: 1.3; color: #000; font-family: 'Comic Neue', cursive, sans-serif; font-weight: bold; border: none !important; margin: 0 !important; padding: 0 !important; }
         .page-number-print { position: absolute; bottom: 5mm; font-size: 10pt; color: #aaa; }
-        
-        /* BACK COVER */
         .print-back-cover { background-color: #fdf6e3 !important; color: #333 !important; padding: 40px !important; border: 15px solid #0d3b66; box-sizing: border-box !important; justify-content: space-between; }
     }
 </style>
@@ -251,6 +241,7 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Tự động lấy đặc điểm nhân vật từ Panel 1
         const firstPrompt = document.getElementById('prompt-text-1');
         if (firstPrompt) {
             const text = firstPrompt.innerText;
@@ -320,6 +311,7 @@
                 container.classList.remove('d-block'); container.classList.add('d-none');
                 editBtn.classList.remove('d-none'); editBtn.classList.add('d-block');
 
+                // Auto Scroll
                 const nextIndex = parseInt(loopIndex) + 1;
                 const nextRow = document.getElementById(`panel-row-${nextIndex}`);
                 if (nextRow) {
