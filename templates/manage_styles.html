@@ -1,351 +1,84 @@
 {% extends "base.html" %}
 
-{% block title %}Comic Studio: {{ title }}{% endblock %}
-
-{% block styles %}
-<style>
-    /* --- WEB MODE --- */
-    body { background-color: #f0f2f5; scroll-behavior: smooth; }
-    .studio-container { max-width: 1200px; margin: 30px auto; padding-bottom: 100px; }
-    
-    /* STICKY TOOLBAR */
-    .sticky-toolbar {
-        position: sticky; top: 20px; z-index: 1000;
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-        border-radius: 16px;
-        padding: 15px 25px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        border: 1px solid rgba(255,255,255,0.5);
-        margin-bottom: 40px;
-        display: flex; justify-content: space-between; align-items: center;
-        transition: all 0.3s ease;
-    }
-    .char-badge {
-        background: #e3f2fd; color: #0d47a1; 
-        padding: 5px 12px; border-radius: 20px; 
-        font-size: 0.85rem; font-weight: bold; border: 1px solid #bbdefb;
-        cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 5px;
-    }
-    .char-badge:hover { background: #bbdefb; }
-
-    /* PANEL DESIGN */
-    .panel-row { 
-        background: #fff; border-radius: 20px; 
-        box-shadow: 0 4px 6px rgba(0,0,0,0.02); 
-        margin-bottom: 40px; overflow: hidden; display: flex; flex-wrap: wrap; 
-        border: 1px solid #f0f0f0;
-        transition: transform 0.3s, box-shadow 0.3s;
-    }
-    .panel-row.active-step {
-        border: 2px solid #f1c40f;
-        box-shadow: 0 15px 40px rgba(241, 196, 15, 0.15);
-        transform: scale(1.01);
-    }
-    
-    .panel-info { 
-        flex: 1; padding: 40px; min-width: 350px; border-right: 1px solid #f8f9fa; 
-        display: flex; flex-direction: column;
-    }
-    
-    /* PROMPT BOX */
-    .prompt-container { position: relative; margin-bottom: 20px; }
-    .prompt-box { 
-        background: #f8f9fa; padding: 20px; padding-right: 60px;
-        border-radius: 12px; font-family: 'Courier New', monospace; font-size: 0.95rem; color: #444; 
-        border: 1px solid #e9ecef; line-height: 1.6;
-        cursor: pointer;
-    }
-    .prompt-box:hover { background: #fff; border-color: #d35400; }
-    
-    .btn-copy-prompt {
-        position: absolute; top: 10px; right: 10px;
-        border: none; background: white; color: #555;
-        width: 40px; height: 40px; border-radius: 10px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        display: flex; align-items: center; justify-content: center;
-        transition: all 0.2s; font-size: 1.2rem;
-    }
-    .btn-copy-prompt:hover { background: #d35400; color: white; transform: translateY(-2px); }
-
-    .caption-text { 
-        font-family: 'Georgia', serif; font-size: 1.3rem; color: #2c3e50; 
-        font-style: italic; margin-top: auto; padding-top: 20px; border-top: 2px dashed #f0f0f0;
-    }
-    
-    /* IMAGE AREA */
-    .panel-preview { 
-        flex: 1; min-width: 350px; background-color: #1a1a1a; position: relative; 
-        min-height: 450px; display: flex; flex-direction: column; justify-content: center; align-items: center; 
-        background-image: radial-gradient(#333 1px, transparent 1px); background-size: 30px 30px;
-    }
-    .comic-image { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-    
-    .upload-zone {
-        text-align: center; color: rgba(255,255,255,0.7);
-        border: 2px dashed rgba(255,255,255,0.2); padding: 30px; border-radius: 16px;
-        transition: 0.3s; width: 80%;
-    }
-    .upload-zone:hover { background: rgba(255,255,255,0.05); border-color: #f1c40f; color: #fff; }
-
-    .d-none { display: none !important; }
-    .d-block { display: block !important; }
-    .print-cover-page, .print-back-cover { display: none; }
-
-    /* --- PRINT MODE (CẤU HÌNH IN ẤN) --- */
-    @media print {
-        @page { size: A4 landscape; margin: 0 !important; }
-        html, body { width: 297mm; height: auto !important; margin: 0 !important; padding: 0 !important; background-color: white !important; overflow: visible !important; display: block !important; }
-        
-        /* ẨN CÁC PHẦN TỬ THỪA KHI IN */
-        .sticky-toolbar, nav, .btn, .alert, .master-prompt-box, .upload-zone, .prompt-box, label, .edit-btn, h1, .no-image-print, .badge, span.badge, .back-cover-data-row, .studio-container > div:first-child, .btn-copy-prompt, .prompt-container, .text-muted { display: none !important; }
-        
-        /* Ẩn dòng chữ 'Use previous image...' bằng class d-print-none */
-        .d-print-none { display: none !important; }
-
-        .studio-container { width: 100% !important; margin: 0 !important; padding: 0 !important; max-width: none !important; display: block !important; }
-        
-        .print-cover-page, .panel-row, .print-back-cover { 
-            width: 297mm !important; height: 210mm !important; 
-            break-after: page !important; page-break-after: always !important; 
-            page-break-inside: avoid !important; display: flex !important; 
-            flex-direction: column; justify-content: center; align-items: center; 
-            margin: 0 !important; padding: 0 !important; position: relative; left: 0 !important; 
-            border-radius: 0 !important; box-shadow: none !important; border: none !important; 
-        }
-        
-        /* COVER PAGE */
-        .print-cover-page { background-color: #0d3b66 !important; color: white !important; border: 15px solid #fdf6e3 !important; box-sizing: border-box !important; }
-        .cover-content-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; margin-top: 20px; }
-        .cover-top-bar { background-color: #f1c40f; color: #0d3b66; padding: 10px 40px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; border-radius: 0 0 15px 15px; font-family: sans-serif; position: absolute; top: 0; z-index: 10; }
-        .print-cover-title { font-size: 3.5rem; font-weight: bold; text-align: center; margin-bottom: 20px; line-height: 1.1; font-family: 'Playfair Display', serif; text-shadow: 3px 3px 0px #000; max-width: 90%; }
-        
-        .cover-image-container { width: 50%; height: 110mm; background-color: #fff; border: 5px solid #f1c40f; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 20px; }
-        .cover-image-img { width: 100%; height: 100%; object-fit: cover; }
-        .print-cover-subtitle { font-size: 1.2rem; font-style: italic; opacity: 0.9; }
-        
-        /* PANEL PAGES */
-        .panel-row { background: white !important; border: none !important; padding: 10mm 20mm !important; box-sizing: border-box !important; }
-        .panel-preview { order: 1; width: 100%; height: 65%; display: flex; align-items: center; justify-content: center; background: none !important; border: none !important; margin-bottom: 10px; }
-        .comic-image { max-width: 95%; max-height: 100%; object-fit: contain; border: 3px solid #333 !important; box-shadow: 5px 5px 0px #eee; }
-        
-        /* Chỉ hiện caption trong panel-info khi in */
-        .panel-info { 
-            order: 2; width: 100%; height: 25%; text-align: center; 
-            border: 2px solid #333 !important; background-color: #fff9c4 !important; 
-            padding: 15px !important; border-radius: 12px; 
-            display: flex; align-items: center; justify-content: center; 
-        }
-        .caption-text { font-size: 16pt; line-height: 1.3; color: #000; font-family: 'Comic Neue', cursive, sans-serif; font-weight: bold; border: none !important; margin: 0 !important; padding: 0 !important; }
-        .page-number-print { position: absolute; bottom: 5mm; font-size: 10pt; color: #aaa; }
-        
-        /* BACK COVER */
-        .print-back-cover { background-color: #fdf6e3 !important; color: #333 !important; padding: 40px !important; border: 15px solid #0d3b66; box-sizing: border-box !important; justify-content: space-between; }
-    }
-</style>
-{% endblock %}
+{% block title %}Style Bank{% endblock %}
 
 {% block content %}
-<div class="container studio-container">
-    
-    <div class="sticky-toolbar" id="stickyToolbar">
-        <div class="d-flex align-items-center gap-3">
-            <h5 class="mb-0 text-primary fw-bold"><i class="bi bi-magic"></i> Comic Studio</h5>
-            <div class="vr mx-2"></div>
-            <a href="https://gemini.google.com/app" target="_blank" class="btn btn-sm btn-outline-dark rounded-pill">
-                <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg" width="16" height="16"> Open Gemini
-            </a>
-        </div>
-
-        <div class="d-flex align-items-center gap-2">
-            <span class="text-muted small d-none d-md-inline">Character Identity:</span>
-            <div class="char-badge" onclick="copyCharDesc()" title="Copy Character Description Only">
-                <i class="bi bi-person-bounding-box"></i> <span id="char-desc-preview">Loading...</span>
+    <div class="content-card">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
+            <div>
+                <h1 class="mb-2">Style Bank</h1>
+                <p class="text-muted mb-0">Manage your custom writing styles.</p>
             </div>
+            <span class="badge bg-secondary mt-2 mt-md-0">{{ styles|length }} Styles Saved</span>
         </div>
-        
-        <div>
-            <button onclick="window.print()" class="btn btn-success btn-sm rounded-pill"><i class="bi bi-printer"></i> Export PDF</button>
-            <a href="{{ url_for('saved_stories_page') }}" class="btn btn-secondary btn-sm rounded-pill">Exit</a>
-        </div>
-    </div>
 
-    <input type="hidden" id="full-char-desc" value="">
-
-    <div class="print-cover-page">
-        <div class="cover-top-bar">Graded Readers Library</div>
-        <div class="cover-content-wrapper"> 
-            <div class="print-cover-title">{{ title }}</div>
-            <div class="cover-image-container">
-                {% if panels|length > 0 and panels[0].image_url %}
-                    <img src="{{ panels[0].image_url }}" class="cover-image-img">
-                {% else %}
-                    <div class="d-print-none" style="color: #0d3b66; text-align: center;">
-                        <i class="bi bi-image" style="font-size: 3rem;"></i>
-                        <p>Cover Image (Panel 1)<br>Not uploaded yet</p>
-                    </div>
-                {% endif %}
-            </div>
-            <div class="print-cover-subtitle">Created with Story Weaver</div>
-        </div>
-    </div>
-
-    <input type="hidden" id="comic_id" value="{{ comic_id }}">
-
-    {% for panel in panels %}
-        {% if panel.panel_number == 999 %}
-            <div class="back-cover-data-row d-none"><span id="back-data-json">{{ panel.caption }}</span></div>
-        {% else %}
-            <div class="panel-row" id="panel-row-{{ loop.index }}">
-                <div class="panel-info">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <span class="badge bg-warning text-dark shadow-sm">PANEL {{ panel.panel_number }}</span>
-                        {% if loop.index > 1 %}
-                            <small class="text-muted fst-italic d-print-none"><i class="bi bi-arrow-up-circle"></i> Use previous image as ref!</small>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="prompt-container">
-                        <div class="prompt-box" id="prompt-text-{{ loop.index }}" onclick="copyToClipboard(this.innerText, document.getElementById('btn-copy-{{ loop.index }}'))">
-                            {{ panel.prompt }}
-                        </div>
-                        <button class="btn-copy-prompt" id="btn-copy-{{ loop.index }}" onclick="copyToClipboard(document.getElementById('prompt-text-{{ loop.index }}').innerText, this)" title="Copy Prompt">
-                            <i class="bi bi-clipboard"></i>
-                        </button>
-                    </div>
-
-                    <div class="caption-text">
-                        <i class="bi bi-chat-quote-fill opacity-25"></i> {{ panel.caption | replace('"', '') }}
-                    </div> 
-                </div>
-
-                <div class="panel-preview">
-                    <img src="{{ panel.image_url or '' }}" id="img-{{ loop.index }}" class="comic-image {{ 'd-block' if panel.image_url else 'd-none' }}">
-                    
-                    <div class="upload-zone {{ 'd-none' if panel.image_url else 'd-block' }}" id="input-group-{{ loop.index }}">
-                        <div class="mb-3">
-                            <i class="bi bi-cloud-arrow-up display-4"></i>
-                            <p class="mt-2 mb-0">Drop image here or click</p>
-                        </div>
-                        <input type="file" class="form-control mb-2" id="file-input-{{ loop.index }}" accept="image/*" onchange="uploadImage('{{ loop.index }}', '{{ panel.panel_number }}', this)">
-                    </div>
-                    
-                    <button class="btn btn-sm btn-light position-absolute top-0 end-0 m-3 edit-btn {{ 'd-block' if panel.image_url else 'd-none' }}" 
-                            id="btn-edit-{{ loop.index }}" onclick="reEditImage('{{ loop.index }}')">
-                        <i class="bi bi-pencil-square"></i> Change
-                    </button>
-                </div>
-                <div class="page-number-print">- {{ loop.index }} -</div>
-            </div>
-        {% endif %}
-    {% endfor %}
-
-    <div class="print-back-cover">
-        <div class="back-cover-header"><div class="series-title">Story Craft Graded Readers</div></div>
-        <div class="back-cover-body"><div class="back-cover-summary" id="print-summary">Summary...</div></div>
-        <div class="back-cover-footer"><div class="publisher-logo">Story Craft Press</div></div>
-    </div>
-</div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const firstPrompt = document.getElementById('prompt-text-1');
-        if (firstPrompt) {
-            const text = firstPrompt.innerText;
-            const match = text.match(/\*\*\[1\] CHARACTER:\*\*(.*?)\*\*\[2\]/);
-            if (match && match[1]) {
-                const charDesc = match[1].trim();
-                document.getElementById('full-char-desc').value = charDesc;
-                document.getElementById('char-desc-preview').innerText = charDesc.substring(0, 30) + "...";
-            } else {
-                document.getElementById('char-desc-preview').innerText = "Main Character";
-                document.getElementById('full-char-desc').value = "Main Character";
-            }
-        }
-
-        const dataSpan = document.getElementById('back-data-json');
-        if (dataSpan) {
-            try {
-                const data = JSON.parse(dataSpan.innerText);
-                document.getElementById('print-summary').innerText = data.summary || "A wonderful story waiting for you.";
-                document.getElementById('print-theme').innerText = data.theme || "General";
-                document.getElementById('print-level').innerText = data.level || "Beginner";
-            } catch (e) { console.error("Back cover data error", e); }
-        }
-    });
-
-    function copyCharDesc() {
-        const text = document.getElementById('full-char-desc').value;
-        navigator.clipboard.writeText(text).then(() => alert("Character info copied!"));
-    }
-
-    function copyToClipboard(text, btnElement) {
-        text = text.trim();
-        navigator.clipboard.writeText(text).then(() => {
-            const originalIcon = btnElement.innerHTML;
-            btnElement.innerHTML = '<i class="bi bi-check-lg"></i>';
-            btnElement.classList.add('bg-success', 'text-white');
-            setTimeout(() => { 
-                btnElement.innerHTML = originalIcon; 
-                btnElement.classList.remove('bg-success', 'text-white');
-            }, 1000);
-        });
-    }
-
-    async function uploadImage(loopIndex, panelNum, fileInput) {
-        if (!fileInput || !fileInput.files[0]) return;
-
-        const container = document.getElementById(`input-group-${loopIndex}`);
-        const originalContent = container.innerHTML;
-        container.innerHTML = '<div class="spinner-border text-light"></div><div class="mt-2">Uploading...</div>';
-
-        const comicId = document.getElementById('comic_id').value;
-        const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
-        formData.append('comic_id', comicId);
-        formData.append('panel_number', panelNum);
-
-        try {
-            const res = await fetch('/upload-panel-image', { method: 'POST', body: formData });
-            const data = await res.json();
+        <div class="row g-4 mt-1">
             
-            if (data.url) {
-                const img = document.getElementById(`img-${loopIndex}`);
-                const editBtn = document.getElementById(`btn-edit-${loopIndex}`);
-                
-                img.src = data.url + "?t=" + new Date().getTime();
-                img.classList.remove('d-none'); img.classList.add('d-block');
-                container.classList.remove('d-block'); container.classList.add('d-none');
-                editBtn.classList.remove('d-none'); editBtn.classList.add('d-block');
+            <div class="col-lg-7 col-12">
+                <div class="p-3 border rounded bg-light">
+                    <h4 class="mb-3 text-primary"><i class="bi bi-plus-circle"></i> Add New Style</h4>
+                    
+                    <form action="{{ url_for('add_style') }}" method="POST" enctype="multipart/form-data">
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Style Name:</label>
+                            <input type="text" name="style_name" class="form-control" placeholder="e.g., Funny Tone..." required>
+                        </div>
 
-                const nextIndex = parseInt(loopIndex) + 1;
-                const nextRow = document.getElementById(`panel-row-${nextIndex}`);
-                if (nextRow) {
-                    document.querySelectorAll('.panel-row').forEach(r => r.classList.remove('active-step'));
-                    nextRow.classList.add('active-step');
-                    nextRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            } else { 
-                alert("Upload failed: " + data.error); 
-                container.innerHTML = originalContent; 
-            }
-        } catch (e) { 
-            console.error(e); 
-            alert("Error uploading");
-            container.innerHTML = originalContent;
-        }
-    }
+                        <ul class="nav nav-tabs mb-2" id="styleTab" role="tablist">
+                            <li class="nav-item">
+                                <button class="nav-link active" id="text-tab" data-bs-toggle="tab" data-bs-target="#text-pane" type="button">Paste Text</button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" id="file-tab" data-bs-toggle="tab" data-bs-target="#file-pane" type="button">Upload File</button>
+                            </li>
+                        </ul>
+                        
+                        <div class="tab-content border border-top-0 p-3 bg-white rounded-bottom mb-3">
+                            <div class="tab-pane fade show active" id="text-pane">
+                                <textarea name="style_content" class="form-control" rows="8" placeholder="Paste sample text here..."></textarea>
+                            </div>
+                            
+                            <div class="tab-pane fade" id="file-pane">
+                                <div class="alert alert-info py-2 small">
+                                    <i class="bi bi-info-circle"></i> Supports <b>.pdf</b> & <b>.docx</b>
+                                </div>
+                                <input type="file" name="style_file" class="form-control" accept=".pdf,.docx">
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-save"></i> Save Style
+                        </button>
+                    </form>
+                </div>
+            </div>
 
-    function reEditImage(loopIndex) {
-        document.getElementById(`img-${loopIndex}`).classList.add('d-none');
-        document.getElementById(`btn-edit-${loopIndex}`).classList.add('d-none');
-        const ig = document.getElementById(`input-group-${loopIndex}`);
-        ig.classList.remove('d-none'); ig.classList.add('d-block');
-        const fileInput = document.getElementById(`file-input-${loopIndex}`);
-        fileInput.value = ''; 
-        ig.innerHTML = `<div class="mb-3"><i class="bi bi-cloud-arrow-up display-4"></i><p class="mt-2 mb-0">Drop image here or click</p></div><input type="file" class="form-control mb-2" id="file-input-${loopIndex}" accept="image/*" onchange="uploadImage('${loopIndex}', '${document.getElementById(`panel-row-${loopIndex}`).querySelector('.badge').innerText.replace('PANEL ', '')}', this)">`;
-    }
-</script>
+            <div class="col-lg-5 col-12">
+                <div class="p-3 border rounded border-danger bg-white">
+                    <h4 class="mb-3 text-danger"><i class="bi bi-trash"></i> Delete Style</h4>
+                    
+                    {% if styles %}
+                        <form action="{{ url_for('delete_style') }}" method="POST">
+                            <label class="form-label">Select style to remove:</label>
+                            <select name="style_to_delete" class="form-select mb-3">
+                                <option disabled selected>-- Choose --</option>
+                                {% for style in styles %}
+                                    <option value="{{ style.name }}">{{ style.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-outline-danger w-100">
+                                Delete Permanently
+                            </button>
+                        </form>
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-1"></i>
+                            <p>No styles yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div> 
 {% endblock %}
