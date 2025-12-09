@@ -17,70 +17,27 @@
         }
 
         /* Reset trang */
-        html, body {
-            margin: 0; padding: 0;
-            width: 100%; height: 100%;
-            overflow-x: hidden; /* Chặn cuộn ngang */
-        }
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow-x: hidden; }
+        body { display: block; font-family: 'Quicksand', sans-serif; background-color: var(--bg-paper); color: var(--text-ink); }
 
-        body { 
-            display: block; 
-            font-family: 'Quicksand', sans-serif; 
-            background-color: var(--bg-paper); 
-            color: var(--text-ink); 
-        }
-
-        /* --- 1. SIDEBAR (MÁY TÍNH) --- */
+        /* --- 1. SIDEBAR --- */
         nav { 
-            position: fixed; 
-            top: 0; left: 0; 
-            height: 100vh;
-            width: 260px; 
-            background: var(--sidebar-wood); 
-            color: var(--sidebar-text); 
-            padding: 30px 20px; 
-            overflow-y: auto; 
-            z-index: 1000;
-            border-right: 5px solid #3e2723;
-            display: flex; flex-direction: column;
+            position: fixed; top: 0; left: 0; height: 100vh; width: 260px; 
+            background: var(--sidebar-wood); color: var(--sidebar-text); 
+            padding: 30px 20px; overflow-y: auto; z-index: 1000;
+            border-right: 5px solid #3e2723; display: flex; flex-direction: column;
         }
-
-        /* Ẩn nút 3 gạch trên Desktop */
         .navbar-toggler { display: none !important; }
         .navbar-collapse { display: block !important; } 
         .mobile-header { text-align: center; margin-bottom: 20px; }
-
-        nav h2 { 
-            font-family: 'Playfair Display', serif; font-weight: 700; font-size: 1.8rem; 
-            color: var(--accent-gold); margin: 0;
-        }
-
-        nav a { 
-            color: var(--sidebar-text); text-decoration: none; display: block; 
-            padding: 12px 15px; font-size: 1.1rem; border-radius: 8px; margin-bottom: 8px;
-            transition: all 0.2s ease; font-weight: 500; text-align: left;
-        }
-        
-        nav a:hover, nav a.active { 
-            background-color: rgba(255,255,255,0.1); color: var(--accent-gold); transform: translateX(5px);
-        }
-        
+        nav h2 { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 1.8rem; color: var(--accent-gold); margin: 0; }
+        nav a { color: var(--sidebar-text); text-decoration: none; display: block; padding: 12px 15px; font-size: 1.1rem; border-radius: 8px; margin-bottom: 8px; transition: all 0.2s ease; font-weight: 500; text-align: left; }
+        nav a:hover, nav a.active { background-color: rgba(255,255,255,0.1); color: var(--accent-gold); transform: translateX(5px); }
         nav i { margin-right: 12px; width: 25px; text-align: center; display: inline-block; }
+        .footer-quote { margin-top: auto; padding-top: 20px; border-top: 1px dashed rgba(255,255,255,0.2); font-size: 0.85em; color: #bcaaa4; font-style: italic; text-align: center; }
 
-        .footer-quote {
-            margin-top: auto; padding-top: 20px; border-top: 1px dashed rgba(255,255,255,0.2); 
-            font-size: 0.85em; color: #bcaaa4; font-style: italic; text-align: center;
-        }
-
-        /* --- 2. NỘI DUNG CHÍNH (ĐẨY SANG PHẢI) --- */
-        .main-container { 
-            margin-left: 260px; 
-            padding: 40px; 
-            min-height: 100vh;
-            box-sizing: border-box; 
-            background-image: radial-gradient(#d7ccc8 1px, transparent 1px); 
-            background-size: 20px 20px;
-        }
+        /* --- 2. MAIN CONTAINER --- */
+        .main-container { margin-left: 260px; padding: 40px; min-height: 100vh; box-sizing: border-box; background-image: radial-gradient(#d7ccc8 1px, transparent 1px); background-size: 20px 20px; }
 
         /* --- UI COMPONENTS --- */
         .content-card { background: var(--card-bg); padding: 40px; border-radius: 16px; box-shadow: 0 8px 20px rgba(93,64,55,0.08); margin: 0 auto; max-width: 1100px; border: 1px solid rgba(0,0,0,0.05); }
@@ -90,26 +47,29 @@
         .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
         h1 { font-family: 'Playfair Display', serif; font-weight: 700; color: var(--sidebar-wood); margin-bottom: 20px; }
 
-        .floating-btn {
-            position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; font-size: 24px;
-            z-index: 9999; display: flex; align-items: center; justify-content: center;
-        }
+        /* --- FORMAT TRUYỆN CHUYÊN NGHIỆP --- */
+        .story-title { font-family: 'Times New Roman', serif !important; font-size: 26pt !important; color: red !important; text-align: center !important; font-weight: bold !important; margin-bottom: 30px !important; line-height: 1.3 !important; }
+        .story-chapter { font-family: 'Times New Roman', serif !important; font-size: 20pt !important; color: black !important; text-align: center !important; font-weight: bold !important; margin-top: 40px !important; margin-bottom: 20px !important; }
+        .story-body { font-family: 'Times New Roman', serif !important; font-size: 18pt !important; color: black !important; text-align: justify !important; text-indent: 50px !important; margin-bottom: 15px !important; line-height: 1.6 !important; }
+        .formatted-story-container { background-color: #ffffff; padding: 50px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
 
-        /* =========================================
-           📱 GIAO DIỆN MOBILE (DƯỚI 992px)
-           ========================================= */
+        /* --- BUTTONS --- */
+        .floating-btn { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; font-size: 24px; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        
+        /* CSS cho nút Back to Top */
+        #backToTopBtn {
+            display: none; position: fixed; bottom: 100px; right: 30px; z-index: 9998;
+            border: none; outline: none; background-color: var(--sidebar-wood); color: white;
+            cursor: pointer; padding: 15px; border-radius: 50%; font-size: 18px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: background-color 0.3s, transform 0.3s;
+        }
+        #backToTopBtn:hover { background-color: var(--accent-gold); transform: translateY(-3px); }
+
+        /* MOBILE */
         @media (max-width: 992px) {
-            nav { 
-                position: relative; 
-                width: 100%; height: auto; padding: 10px 20px;
-                border-right: none; border-bottom: 5px solid #3e2723;
-                z-index: 1001;
-            }
+            nav { position: relative; width: 100%; height: auto; padding: 10px 20px; border-right: none; border-bottom: 5px solid #3e2723; z-index: 1001; }
             .main-container { margin-left: 0; padding: 15px; }
-            .mobile-header { 
-                display: flex; justify-content: space-between; align-items: center; 
-                margin-bottom: 0; text-align: left; 
-            }
+            .mobile-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0; text-align: left; }
             nav h2 { font-size: 1.5rem; }
             .navbar-toggler { display: block !important; }
             .navbar-collapse { display: none !important; margin-top: 15px; } 
@@ -118,80 +78,10 @@
             nav a:hover { transform: none; background-color: rgba(255,255,255,0.2); }
             .content-card { padding: 20px; }
             .floating-btn { width: 50px; height: 50px; font-size: 20px; bottom: 20px; right: 15px; }
+            #backToTopBtn { bottom: 80px; right: 15px; width: 50px; height: 50px; padding: 10px; }
             .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
             input, select, textarea { font-size: 16px !important; }
         }
-
-        /* --- FORMAT TRUYỆN CHUYÊN NGHIỆP --- */
-
-/* 1. Tiêu đề truyện: Times New Roman, 26pt, Đỏ, Giữa */
-.story-title {
-    font-family: 'Times New Roman', serif !important;
-    font-size: 26pt !important;
-    color: red !important;
-    text-align: center !important;
-    font-weight: bold !important;
-    margin-bottom: 30px !important;
-    line-height: 1.3 !important;
-}
-
-/* 2. Tên Chapter & Graded Definitions: Times New Roman, 20pt, Đen, Giữa */
-.story-chapter {
-    font-family: 'Times New Roman', serif !important;
-    font-size: 20pt !important;
-    color: black !important;
-    text-align: center !important;
-    font-weight: bold !important;
-    margin-top: 40px !important;
-    margin-bottom: 20px !important;
-}
-
-/* 3. Nội dung thường: Times New Roman, 18pt, Đen, Trái, Thụt đầu dòng */
-.story-body {
-    font-family: 'Times New Roman', serif !important;
-    font-size: 18pt !important;
-    color: black !important;
-    text-align: justify !important; /* Canh đều 2 bên */
-    text-indent: 50px !important;   /* Thụt đầu dòng */
-    margin-bottom: 15px !important;
-    line-height: 1.6 !important;
-}
-
-/* 4. Container chung */
-.formatted-story-container {
-    background-color: #ffffff;
-    padding: 50px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-}
-        /* Nút Back to Top */
-#backToTopBtn {
-    display: none; /* Mặc định ẩn */
-    position: fixed;
-    bottom: 100px; /* Nằm trên nút Chat Support một chút */
-    right: 30px;
-    z-index: 9998;
-    border: none;
-    outline: none;
-    background-color: var(--sidebar-wood);
-    color: white;
-    cursor: pointer;
-    padding: 15px;
-    border-radius: 50%;
-    font-size: 18px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    transition: background-color 0.3s, transform 0.3s;
-}
-
-#backToTopBtn:hover {
-    background-color: var(--accent-gold);
-    transform: translateY(-3px);
-}
-
-@media (max-width: 992px) {
-    #backToTopBtn { bottom: 80px; right: 15px; width: 50px; height: 50px; padding: 10px; }
-}
     </style>
     {% block styles %}{% endblock %}
 </head>
@@ -249,6 +139,10 @@
     </div> 
 
     {% if current_user.is_authenticated %}
+        <button onclick="topFunction()" id="backToTopBtn" title="Go to top">
+            <i class="bi bi-arrow-up"></i>
+        </button>
+
         <button type="button" class="btn btn-warning rounded-circle shadow floating-btn" data-bs-toggle="modal" data-bs-target="#feedbackModal">
             <i class="bi bi-chat-dots-fill text-white"></i>
         </button>
@@ -293,12 +187,25 @@
         const toastElList = document.querySelectorAll('.toast');
         const toastList = [...toastElList].map(toastEl => new bootstrap.Toast(toastEl, { delay: 5000 }));
         toastList.forEach(toast => toast.show());
+
+        // --- BACK TO TOP LOGIC (Mới thêm) ---
+        let mybutton = document.getElementById("backToTopBtn");
+        window.onscroll = function() {scrollFunction()};
+
+        function scrollFunction() {
+            if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
+                mybutton.style.display = "block";
+            } else {
+                mybutton.style.display = "none";
+            }
+        }
+
+        function topFunction() {
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
     </script>
     
     {% block scripts %}{% endblock %}
 
 </body>
-
 </html>
-
-
