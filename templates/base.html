@@ -173,9 +173,10 @@
     
     <script>
         const navLinks = document.querySelectorAll('.navbar-collapse a');
-        const menuToggle = document.getElementById('sidebarMenu');
+    const menuToggle = document.getElementById('sidebarMenu');
+    // Kiểm tra nếu menuToggle tồn tại mới chạy (tránh lỗi ở trang login)
+    if (menuToggle) {
         const bsCollapse = new bootstrap.Collapse(menuToggle, {toggle: false});
-
         navLinks.forEach((l) => {
             l.addEventListener('click', () => {
                 if (menuToggle.classList.contains('show')) {
@@ -183,29 +184,34 @@
                 }
             });
         });
+    }
 
-        const toastElList = document.querySelectorAll('.toast');
-        const toastList = [...toastElList].map(toastEl => new bootstrap.Toast(toastEl, { delay: 5000 }));
-        toastList.forEach(toast => toast.show());
+    const toastElList = document.querySelectorAll('.toast');
+    const toastList = [...toastElList].map(toastEl => new bootstrap.Toast(toastEl, { delay: 5000 }));
+    toastList.forEach(toast => toast.show());
 
-        // --- BACK TO TOP LOGIC (Mới thêm) ---
-        let mybutton = document.getElementById("backToTopBtn");
-        window.onscroll = function() {scrollFunction()};
+    // --- FIX LOGIC BACK TO TOP ---
+    let mybutton = document.getElementById("backToTopBtn");
 
-        function scrollFunction() {
-            if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
+    // Chỉ chạy lệnh cuộn nếu nút backToTopBtn thực sự tồn tại trong HTML
+    if (mybutton) {
+        window.onscroll = function() {
+            // Sử dụng window.scrollY cho độ tương thích cao hơn
+            if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300 || window.scrollY > 300) {
                 mybutton.style.display = "block";
             } else {
                 mybutton.style.display = "none";
             }
-        }
+        };
 
         function topFunction() {
             window.scrollTo({top: 0, behavior: 'smooth'});
         }
+    }
     </script>
     
     {% block scripts %}{% endblock %}
 
 </body>
 </html>
+
