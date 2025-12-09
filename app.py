@@ -236,13 +236,17 @@ def create_prompt_for_ai(inputs):
        - **Target Words:** [{vocab_list_str}]
        - {repetition_rule}
        - **FORBIDDEN:** Do NOT use backticks (`), bold (**), quotes (""), or underlines to highlight target words. Write them exactly like normal text.
+
+    3. **STORYTELLING:** - **Show, Don't Tell:** Instead of saying "He was sad", describe his actions.
+       - **Inner Monologue:** Show what the character is thinking/feeling. (Example: "This is a disaster," he thought)
+       - **Dialogue:** Use natural conversation to advance the plot.
+       
+    4. {setting_instr}
     
-    3. {setting_instr}
-    
-    4. **GRAMMAR & TONE:** - **Grammar Level:** {CEFR_LEVEL_GUIDELINES.get(cefr_level, "Standard grammar")}
+    5. **GRAMMAR & TONE:** - **Grammar Level:** {CEFR_LEVEL_GUIDELINES.get(cefr_level, "Standard grammar")}
        - **Tone:** Encouraging, Relatable, Human.
     
-    5. **ADDITIONAL CONSTRAINTS:**
+    6. **ADDITIONAL CONSTRAINTS:**
        {negative_instr}
        {style_instr}
 
@@ -689,6 +693,7 @@ def reset_password():
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
     app.run(debug=True, port=5000)
+
 
 
 
