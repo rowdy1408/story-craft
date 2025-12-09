@@ -435,27 +435,27 @@ def create_comic_direct(story_id):
     api_key = configure_ai()
     
     try:
-        # --- BƯỚC 1: XÂY DỰNG "HỒ SƠ NHÂN VẬT" ---
-        char_name = "The main character"
-        char_visual = "wearing a simple red t-shirt and blue denim shorts" 
-        
+        # --- BƯỚC 1: LỌC NỘI DUNG (MỚI) ---
+        # Chỉ lấy phần truyện, bỏ phần Quiz (nếu có)
+        clean_story_content = story.content
+        separator = "## 🎓 PEDAGOGICAL WORKSHEET"
+        if separator in clean_story_content:
+            clean_story_content = clean_story_content.split(separator)[0]
+
+        # --- BƯỚC 2: LẤY THÔNG TIN NHÂN VẬT ---
+        char_desc = "A relatable character"
         try:
             if story.prompt_data:
                 saved_inputs = json.loads(story.prompt_data)
-                raw_name = saved_inputs.get('main_char', '')
-                if raw_name:
-                    char_name = raw_name
-                    if "wearing" not in raw_name.lower() and "shirt" not in raw_name.lower():
-                        char_visual = f"{raw_name}, wearing a signature bright yellow hoodie and black pants"
-                    else:
-                        char_visual = raw_name
-        except:
-            pass
+                raw_char = saved_inputs.get('main_char', '')
+                if raw_char:
+                    char_desc = f"{raw_char}, distinct facial features, wearing a signature outfit, consistent character"
+        except: pass
             
-        consistency_prompt = f"IDENTITY: {char_visual}. (Keep facial features, hair style, and clothing EXACTLY the same in every shot)."
+        consistency_prompt = f"IDENTITY: {char_desc}. (Keep facial features, hair style, and clothing EXACTLY the same in every shot)."
 
-        # --- BƯỚC 2: GỌI AI ---
-        ai_response_text = generate_story_ai(api_key, create_comic_script_prompt(story.content))
+        # --- BƯỚC 3: GỌI AI (Dùng clean_story_content thay vì story.content) ---
+        ai_response_text = generate_story_ai(api_key, create_comic_script_prompt(clean_story_content))
         data = robust_json_extract(ai_response_text)
         
         if not data: return jsonify({"error": "AI Error. Please try again."}), 500
@@ -689,5 +689,6 @@ def reset_password():
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
     app.run(debug=True, port=5000)
+
 
 
