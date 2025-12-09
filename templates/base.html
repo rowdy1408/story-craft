@@ -230,26 +230,26 @@
     // --- FIX LOGIC BACK TO TOP ---
     let mybutton = document.getElementById("backToTopBtn");
 
-    // Chỉ chạy lệnh cuộn nếu nút backToTopBtn thực sự tồn tại trong HTML
-    if (mybutton) {
-        window.onscroll = function() {
-            // Sử dụng window.scrollY cho độ tương thích cao hơn
+        window.onscroll = function() { scrollFunction() };
+
+        function scrollFunction() {
+            // Dùng window.scrollY cho chắc ăn
             if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300 || window.scrollY > 300) {
-                mybutton.style.display = "block";
+                if(mybutton) mybutton.style.display = "block";
             } else {
-                mybutton.style.display = "none";
+                if(mybutton) mybutton.style.display = "none";
             }
-        };
+        }
 
         function topFunction() {
             window.scrollTo({top: 0, behavior: 'smooth'});
         }
-    }
     </script>
     
     {% block scripts %}{% endblock %}
 
 </body>
 </html>
+
 
 
