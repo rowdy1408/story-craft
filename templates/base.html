@@ -82,6 +82,43 @@
             .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
             input, select, textarea { font-size: 16px !important; }
         }
+
+        /* STYLE CHO WORD BANK */
+.word-bank-container {
+    background-color: #f8f9fa;
+    border: 2px dashed #d35400;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+    text-align: center;
+}
+
+.word-bank-title {
+    font-weight: bold;
+    color: #d35400;
+    text-transform: uppercase;
+    margin-bottom: 15px;
+    font-family: 'Quicksand', sans-serif;
+    letter-spacing: 1px;
+}
+
+.word-bank-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+}
+
+.word-chip {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-weight: bold;
+    color: #2c3e50;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    font-family: 'Courier New', monospace;
+}
     </style>
     {% block styles %}{% endblock %}
 </head>
@@ -214,4 +251,5 @@
 
 </body>
 </html>
+
 
