@@ -220,10 +220,10 @@ def create_prompt_for_ai(inputs):
     **LITERARY VOICE (CRITICAL):**
     Choose ONE of the following styles that BEST fits the story idea below:
     {style_list_str}
-    -> **Apply the chosen style consistently throughout the story.**
+    -> **Apply the chosen style consistently.**
     """
 
-    # --- 2. LOGIC CẤU TRÚC (PICTURE BOOK / SHORT STORY) ---
+    # --- 2. LOGIC CẤU TRÚC (UPDATE: Thêm Narrative Flow) ---
     target_audience = inputs.get('target_audience', 'General')
 
     if target_audience == 'Children' and cefr_level in ["PRE A1", "A1", "A2"]:
@@ -234,10 +234,10 @@ def create_prompt_for_ai(inputs):
             
         structure_instr = f"""
         **STRUCTURE: PICTURE BOOK FORMAT**
-        - Divide the story into **{num_pages} PAGES** (based on word count).
+        - Divide the story into **{num_pages} PAGES**.
         - Label each part clearly as: `--- PAGE [X] ---`
-        - **IMPORTANT:** Write a meaningful paragraph (3-5 sentences) per page. Avoid single-line pages to ensure rich content.
-        - Ensure good flow between pages.
+        - **IMPORTANT:** Write a meaningful paragraph (3-5 sentences) per page.
+        - **FLOW:** Ensure smooth transitions between pages. Use connecting words (Then, Next, Suddenly) so the story reads as one continuous narrative, not disjointed scenes.
         """
         opening_rule = "Start with a **# Title**. Then immediately start with `--- PAGE 1 ---`."
         
@@ -261,21 +261,20 @@ def create_prompt_for_ai(inputs):
 
     repetition_rule = "Weave target words into the story naturally (approx 3-5 times each)."
 
-    # --- 3. XỬ LÝ MAGIC DUST (Style người dùng chọn sẽ ghi đè hoặc kết hợp) ---
-    # Logic Nhân vật phụ thông minh
-    raw_num = inputs.get('num_support')
+    # --- 3. XỬ LÝ MAGIC DUST (Giữ nguyên) ---
     support_instr = ""
+    raw_num = inputs.get('num_support')
     if raw_num and str(raw_num).strip(): 
         try:
             num = int(raw_num)
             if num > 0:
-                support_instr = f"- **Supporting Characters:** Include exactly {num} supporting character(s). Ensure meaningful interaction and dialogue with the Main Character."
+                support_instr = f"- **Supporting Characters:** Include exactly {num} supporting character(s). Ensure meaningful interaction."
             else:
-                support_instr = "- **Supporting Characters:** No supporting characters. Focus on the main character's internal thoughts and actions."
+                support_instr = "- **Supporting Characters:** No supporting characters. Focus on internal thoughts."
         except:
-            support_instr = "- **Supporting Characters:** Automatically introduce 1-2 supporting characters. **MANDATORY:** Include natural dialogue interactions between them and the Main Character."
+            support_instr = "- **Supporting Characters:** Automatically introduce 1-2 supporting characters. **MANDATORY:** Include natural dialogue."
     else:
-        support_instr = "- **Supporting Characters:** Automatically introduce 1-2 supporting characters (e.g., a friend, a family member, or a stranger). **MANDATORY:** Include natural dialogue interactions between them and the Main Character to drive the plot."
+        support_instr = "- **Supporting Characters:** Automatically introduce 1-2 supporting characters. **MANDATORY:** Include natural dialogue."
 
     negative_instr = ""
     if inputs.get('negative_keywords'):
@@ -313,6 +312,7 @@ def create_prompt_for_ai(inputs):
     4. **GRAMMAR & TONE:**
        - **Grammar Level:** {CEFR_LEVEL_GUIDELINES.get(cefr_level, "Standard grammar")}
        {style_selection_instr}
+       - **Tone:** Encouraging, Relatable, Human.
     
     5. **ADDITIONAL CONSTRAINTS:**
        {negative_instr}
@@ -376,7 +376,7 @@ def create_pedagogical_quiz_prompt(story_content, quiz_preference):
     return f"""
     **Role:** Quiz Generator Engine.
     **MODE:** STRICT OUTPUT ONLY.
-    **RULE:** Do NOT write any conversational text (e.g., "Here is the quiz", "As an expert..."). Start immediately with the content.
+    **RULE:** Do NOT write any conversational text. Start immediately with the content.
     
     **Task:** Create a 3-stage quiz for the story below.
     
@@ -385,20 +385,18 @@ def create_pedagogical_quiz_prompt(story_content, quiz_preference):
 
     **STRUCTURE:**
 
-    ## 🎓 PEDAGOGICAL WORKSHEET
-
-    ### PART 1: CONTROLLED PRACTICE (Recall)
+    PART 1: CONTROLLED PRACTICE (Recall)
     *Format:* Based on '{quiz_preference}' (mcq/tf/mix/open).
     - Create 5 questions.
 
-    ### PART 2: LESS CONTROLLED PRACTICE (Vocabulary)
+    PART 2: LESS CONTROLLED PRACTICE (Vocabulary)
     *Format:* **Gap Fill**.
     - Create a short summary text with 5-6 blanks.
-    - **CRITICAL:** Provide the Word Bank on a SINGLE LINE exactly like this format:
+    - **CRITICAL:** Use standard underscores for blanks like this: `_______ (1)`. Do NOT use slashes, bars, or fancy graphics.
+    - **MANDATORY:** Provide the Word Bank on a SINGLE LINE exactly like this format (no tables):
       `[[WORD BANK: word1, word2, word3, word4, word5, distractor1]]`
-    - (Do not use Markdown tables for the word bank).
 
-    ### PART 3: FREE PRACTICE (Production)
+    PART 3: FREE PRACTICE (Production)
     1. **Discussion:** 1 Open-ended question connecting to real life.
     2. **Creative Writing:** 1 Prompt (rewrite ending, dialogue, etc.).
 
@@ -744,3 +742,4 @@ def reset_password():
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
     app.run(debug=True, port=5000)
+
