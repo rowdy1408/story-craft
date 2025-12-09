@@ -222,13 +222,24 @@ def create_prompt_for_ai(inputs):
     # --- XỬ LÝ OPTIONAL INPUTS (Magic Dust) ---
     
     # 1. Số nhân vật phụ
+    raw_num = inputs.get('num_support')
     support_instr = ""
-    if inputs.get('num_support'):
+    
+    if raw_num and str(raw_num).strip(): 
+        # Nếu người dùng CÓ nhập số lượng
         try:
-            num = int(inputs['num_support'])
+            num = int(raw_num)
             if num > 0:
-                support_instr = f"- **Supporting Characters:** Include exactly {num} supporting character(s) to interact with the Main Character."
-        except: pass
+                support_instr = f"- **Supporting Characters:** Include exactly {num} supporting character(s). Ensure meaningful interaction and dialogue with the Main Character."
+            else:
+                # Nếu nhập 0 -> Chỉ độc thoại
+                support_instr = "- **Supporting Characters:** No supporting characters. Focus on the main character's internal thoughts and actions."
+        except:
+            # Nhập lỗi -> Mặc định
+            support_instr = "- **Supporting Characters:** Automatically introduce 1-2 supporting characters. **MANDATORY:** Include natural dialogue interactions between them and the Main Character."
+    else:
+        # Nếu ĐỂ TRỐNG -> Tự động thêm 1-2 người + Bắt buộc có thoại
+        support_instr = "- **Supporting Characters:** Automatically introduce 1-2 supporting characters (e.g., a friend, a family member, or a stranger). **MANDATORY:** Include natural dialogue interactions between them and the Main Character to drive the plot."
 
     # 2. Từ khóa cấm (Negative Keywords)
     negative_instr = ""
@@ -787,6 +798,7 @@ def reset_password():
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
     app.run(debug=True, port=5000)
+
 
 
 
