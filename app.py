@@ -638,8 +638,23 @@ def handle_save_story():
 @app.route('/delete-story', methods=['POST'])
 @login_required
 def handle_delete_story():
-    s = Story.query.get(request.form.get('story_id'))
-    if s and s.user_id == current_user.id: db.session.delete(s); db.session.commit()
+    story_id = request.form.get('story_id')
+    s = Story.query.get(story_id)
+    
+    if s and s.user_id == current_user.id:
+        try:
+            # 1. Xóa tất cả Comic liên quan đến truyện này trước
+            Comic.query.filter_by(story_id=s.id).delete()
+            
+            # 2. Sau đó mới xóa Truyện
+            db.session.delete(s)
+            db.session.commit()
+            flash('Story deleted successfully.', 'success')
+        except Exception as e:
+            db.session.rollback() # Hoàn tác nếu có lỗi
+            print(f"Error deleting story: {e}")
+            flash('Error deleting story. Please try again.', 'danger')
+            
     return redirect(url_for('saved_stories_page'))
 
 @app.route('/edit-story/<int:story_id>', methods=['GET', 'POST'])
@@ -742,4 +757,5 @@ def reset_password():
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
     app.run(debug=True, port=5000)
+
 
