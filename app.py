@@ -36,6 +36,13 @@ else:
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# --- THÊM ĐOẠN NÀY ĐỂ FIX LỖI SSL CONNECTION ---
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    "pool_pre_ping": True,   # Quan trọng: Kiểm tra kết nối trước khi dùng
+    "pool_recycle": 300,     # Tái tạo kết nối mỗi 300 giây (5 phút)
+}
+# -----------------------------------------------
+
 UPLOAD_FOLDER = os.path.join(base_dir, 'static', 'uploads')
 if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER)
 
@@ -757,5 +764,6 @@ def reset_password():
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
     app.run(debug=True, port=5000)
+
 
 
