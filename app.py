@@ -439,16 +439,47 @@ def register():
         username = request.form['username']
         password = request.form['password']
         code = request.form.get('secret_code')
+        
+        # Lấy danh sách mã hợp lệ từ biến môi trường
         valid_codes = [os.environ.get('REGISTRATION_CODE_BOSS'), os.environ.get('REGISTRATION_CODE_VIP')]
+        # Lọc bỏ các giá trị rỗng (None) nếu chưa set biến môi trường
         valid_codes = [c for c in valid_codes if c] 
         
-        if code not in valid_codes: return redirect(url_for('register'))
-        if username.lower() == 'admin' and code != "BOSS_ONLY_999": return redirect(url_for('register'))
-        if User.query.filter_by(username=username).first(): return redirect(url_for('register'))
+        # --- SỬA LỖI: Thêm thông báo (Flash) trước khi redirect ---
         
-        db.session.add(User(username=username, password_hash=generate_password_hash(password)))
-        db.session.commit()
-        return redirect(url_for('login'))
+        # 1. Kiểm tra Mã Đăng Ký (Secret Code)
+        if not valid_codes:
+            # Trường hợp quên set biến môi trường trên server
+            flash('Lỗi hệ thống: Admin chưa cấu hình Mã Đăng Ký (Env Var).', 'danger')
+            return redirect(url_for('register'))
+
+        if code not in valid_codes: 
+            flash('Mã đăng ký (Secret Code) không đúng! Vui lòng hỏi Admin.', 'danger') # <--- Báo lỗi sai code
+            return redirect(url_for('register'))
+            
+        # 2. Kiểm tra việc giả danh Admin
+        if username.lower() == 'admin' and code != "BOSS_ONLY_999": 
+            flash('Bạn không thể đăng ký tên "admin" với mã này.', 'danger')
+            return redirect(url_for('register'))
+            
+        # 3. Kiểm tra tên đăng nhập đã tồn tại chưa
+        if User.query.filter_by(username=username).first(): 
+            flash('Tên đăng nhập này đã có người dùng. Hãy chọn tên khác!', 'danger') # <--- Báo lỗi trùng tên
+            return redirect(url_for('register'))
+        
+        # --- NẾU ỔN HẾT THÌ MỚI TẠO USER ---
+        try:
+            new_user = User(username=username, password_hash=generate_password_hash(password))
+            db.session.add(new_user)
+            db.session.commit()
+            flash('Đăng ký thành công! Vui lòng đăng nhập.', 'success')
+            return redirect(url_for('login'))
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error creating user: {e}")
+            flash('Lỗi database khi tạo tài khoản. Vui lòng thử lại.', 'danger')
+            return redirect(url_for('register'))
+
     return render_template('register.html')
 
 @app.route('/logout')
@@ -764,6 +795,7 @@ def reset_password():
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
     app.run(debug=True, port=5000)
+
 
 
 
