@@ -319,6 +319,7 @@ def create_prompt_for_ai(inputs):
     
     4. **GRAMMAR & TONE:**
        - **Grammar Level:** {CEFR_LEVEL_GUIDELINES.get(cefr_level, "Standard grammar")}
+       - **CRITICAL:** Even at low levels (A1/A2), use **NATURAL English phrasing**. ALWAYS use proper articles (a, an, the) and pronouns. Do NOT write in "pidgin" or broken English (e.g., write "He stays in his bedroom", NOT "He stay in bedroom").
        {style_selection_instr}
        - **Tone:** Encouraging, Relatable, Human.
     
@@ -328,11 +329,8 @@ def create_prompt_for_ai(inputs):
        - **LANGUAGE:** Write in standard English. Use English terms for family members (Mom, Dad, Grandma) unless strictly instructed otherwise.
 
     **OUTPUT FORMAT:**
-
     # [Creative Title]
-
     [Story content...]
-
     ---
     Graded Definitions ({cefr_level})
     *Format:*
@@ -378,13 +376,10 @@ def create_translation_prompt(inputs):
     """
 
 def create_pedagogical_quiz_prompt(story_content, quiz_preference):
-    """
-    Tạo prompt theo chuẩn sư phạm: Controlled -> Less Controlled -> Free Practice
-    """
     return f"""
     **Role:** Quiz Generator Engine.
     **MODE:** STRICT OUTPUT ONLY.
-    **RULE:** Do NOT write any conversational text. Start immediately with the content.
+    **Forbidden:** Do NOT include internal reasoning, notes about distractors, or conversational filler (e.g., "Here is the quiz", "Note: I chose...").
     
     **Task:** Create a 3-stage quiz for the story below.
     
@@ -400,7 +395,7 @@ def create_pedagogical_quiz_prompt(story_content, quiz_preference):
     PART 2: LESS CONTROLLED PRACTICE (Vocabulary)
     *Format:* **Gap Fill**.
     - Create a short summary text with 5-6 blanks.
-    - **CRITICAL:** Use standard underscores for blanks like this: `_______ (1)`. Do NOT use slashes, bars, or fancy graphics.
+    - **CRITICAL:** Use standard underscores for blanks like this: `_______ (1)`.
     - **MANDATORY:** Provide the Word Bank on a SINGLE LINE exactly like this format (no tables):
       `[[WORD BANK: word1, word2, word3, word4, word5, distractor1]]`
 
@@ -409,7 +404,11 @@ def create_pedagogical_quiz_prompt(story_content, quiz_preference):
     2. **Creative Writing:** 1 Prompt (rewrite ending, dialogue, etc.).
 
     **ANSWER KEY (At the bottom)**
-    - Answers for Part 1 & 2.
+    - Provide ONLY the answers.
+    - Do NOT explain why an answer was chosen.
+    - Format strictly:
+      Part 1: 1. A, 2. B...
+      Part 2: 1. word...
     """
 
 # --- 5. ROUTES ---
@@ -820,6 +819,7 @@ def fix_style_db():
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
     app.run(debug=True, port=5000)
+
 
 
 
