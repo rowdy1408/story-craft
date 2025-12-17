@@ -64,9 +64,10 @@ class User(UserMixin, db.Model):
 
 class Style(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=False) # Bỏ unique=True để mỗi user có thể đặt tên giống nhau
     content = db.Column(db.Text, nullable=False)
-
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False) # Thêm dòng này
+    
 class Story(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
@@ -489,7 +490,8 @@ def logout(): logout_user(); return redirect(url_for('login'))
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html', all_styles=Style.query.all(), previous_inputs={}, user=current_user)
+    user_styles = Style.query.filter_by(user_id=current_user.id).all()
+    return render_template('index.html', all_styles=user_styles, previous_inputs={}, user=current_user)
 
 @app.route('/generate-story', methods=['POST'])
 @login_required
@@ -501,7 +503,8 @@ def handle_generation():
     selected_style_names = request.form.getlist('selected_styles')
     style_content_str = ""
     if selected_style_names:
-        styles = Style.query.filter(Style.name.in_(selected_style_names)).all()
+        # Sửa truy vấn: Lọc theo tên VÀ user_id
+        styles = Style.query.filter(Style.name.in_(selected_style_names), Style.user_id == current_user.id).all()
         style_content_str = "\n".join([s.content for s in styles])
 
     inputs = {
@@ -638,25 +641,33 @@ def reuse_prompt(story_id):
             prev_inputs = json.loads(story.prompt_data)
         except:
             prev_inputs = {}
-    return render_template('index.html', all_styles=Style.query.all(), previous_inputs=prev_inputs, user=current_user)
+    # Sửa truy vấn style tại đây
+    return render_template('index.html', all_styles=Style.query.filter_by(user_id=current_user.id).all(), previous_inputs=prev_inputs, user=current_user)
 
 @app.route('/styles')
 @login_required
-def styles_page(): return render_template('manage_styles.html', styles=Style.query.all(), user=current_user)
+def styles_page(): 
+    return render_template('manage_styles.html', styles=Style.query.filter_by(user_id=current_user.id).all(), user=current_user)
 
 @app.route('/add-style', methods=['POST'])
 @login_required
 def add_style():
     content = request.form.get('style_content', '')
     if request.files.get('style_file'): content = extract_text_from_file(request.files['style_file']) or content
-    db.session.add(Style(name=request.form['style_name'], content=content))
-    db.session.commit()
+    
+    # Kiểm tra trùng tên (chỉ trong phạm vi user đó)
+    existing = Style.query.filter_by(name=request.form['style_name'], user_id=current_user.id).first()
+    if existing:
+        flash('Style name already exists!', 'warning')
+    else:
+        db.session.add(Style(name=request.form['style_name'], content=content, user_id=current_user.id))
+        db.session.commit()
     return redirect(url_for('styles_page'))
 
 @app.route('/delete-style', methods=['POST'])
 @login_required
 def delete_style():
-    s = Style.query.filter_by(name=request.form['style_to_delete']).first()
+    s = Style.query.filter_by(name=request.form['style_to_delete'], user_id=current_user.id).first()
     if s: db.session.delete(s); db.session.commit()
     return redirect(url_for('styles_page'))
 
@@ -795,6 +806,7 @@ def reset_password():
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
     app.run(debug=True, port=5000)
+
 
 
 
