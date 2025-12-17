@@ -176,9 +176,51 @@
     </div> 
 
     {% if current_user.is_authenticated %}
-        <button onclick="topFunction()" id="backToTopBtn" title="Go to top">
-            <i class="bi bi-arrow-up"></i>
-        </button>
+        <button
+        type="button"
+        class="btn btn-primary btn-lg"
+        id="btn-back-to-top"
+        style="
+        position: fixed;
+        bottom: 90px; /* Đẩy lên cao hơn (mặc định thường là 20px) để né nút Support */
+        right: 20px;
+        display: none; /* Mặc định ẩn */
+        z-index: 9999; /* Luôn nổi trên cùng */
+        border-radius: 50%; /* Bo tròn */
+        width: 50px;
+        height: 50px;
+        padding: 0;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    "
+>
+    <i class="bi bi-arrow-up"></i>
+</button>
+    <script>
+    // Logic hiển thị nút khi cuộn chuột
+    let mybutton = document.getElementById("btn-back-to-top");
+
+    window.onscroll = function () {
+        scrollFunction();
+    };
+
+    function scrollFunction() {
+        if (
+            document.body.scrollTop > 200 ||
+            document.documentElement.scrollTop > 200
+        ) {
+            mybutton.style.display = "block";
+        } else {
+            mybutton.style.display = "none";
+        }
+    }
+
+    // Xử lý sự kiện click để cuộn lên đầu
+    mybutton.addEventListener("click", backToTop);
+
+    function backToTop() {
+        window.scrollTo({ top: 0, behavior: 'smooth' }); // Cuộn mượt mà
+    }
+</script>
 
         <button type="button" class="btn btn-warning rounded-circle shadow floating-btn" data-bs-toggle="modal" data-bs-target="#feedbackModal">
             <i class="bi bi-chat-dots-fill text-white"></i>
@@ -250,6 +292,7 @@
 
 </body>
 </html>
+
 
 
 
