@@ -42,6 +42,48 @@
         .confirm-table td:first-child { font-family: 'Playfair Display', serif; color: var(--primary-btn); width: 35%; font-weight: bold; }
         .modal-header { background-color: var(--sidebar-wood); color: #fff; }
         .modal-content { border-radius: 16px; overflow: hidden; border: none; }
+
+        /* [CẬP NHẬT] CSS CHO CHẾ ĐỘ IN ẤN (Clean Print) */
+        @media print {
+            /* 1. Ẩn headers/footers mặc định của trình duyệt (URL, Time) */
+            @page {
+                margin: 2cm; 
+                size: auto;
+            }
+            
+            /* 2. Ẩn tất cả mọi thứ trên trang web */
+            body * {
+                visibility: hidden;
+            }
+
+            /* 3. Chỉ hiện container kết quả truyện */
+            #story-result-container, #story-result-container * {
+                visibility: visible;
+            }
+
+            /* 4. Căn chỉnh lại vị trí để in đẹp */
+            #story-result-container {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                border: none !important; /* Bỏ viền khung nếu có */
+            }
+
+            /* 5. Ẩn nút Save/Print bên trong kết quả nếu có */
+            .input-section form, .btn, .badge {
+                display: none !important;
+            }
+            
+            /* 6. Đảm bảo text màu đen 100% cho rõ */
+            body {
+                color: #000 !important;
+                background: #fff !important;
+            }
+        }
+        
     </style>
 {% endblock %}
 
@@ -296,25 +338,22 @@
     // [CẬP NHẬT] Thêm onsubmit vào thẻ <form> bên dưới để disable nút khi ấn
     resultHTML = `
     <div class="input-section border-top border-5 border-success position-relative fade-in">
-        <span class="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-success fs-6 shadow">
-            <i class="bi bi-check-circle-fill"></i> Story Generated
-        </span>
-        
-        <div class="mt-4">
-            ${formatStoryHTML(storyContent)}
+        <div class="mt-4" id="printable-story"> ${formatStoryHTML(storyContent)}
         </div>
 
         <hr class="my-4">
-        <form action="{{ url_for('handle_save_story') }}" method="POST" class="text-end" 
-              onsubmit="var btn = this.querySelector('button'); btn.disabled = true; btn.innerHTML = '<span class=\'spinner-border spinner-border-sm\'></span> Saving...';">
-            
-            <input type="hidden" name="story_content" value="${escapeHTML(storyContent)}">
-            <input type="hidden" name="prompt_data_json" value='${inputsJson}'>
-            
-            <button type="submit" class="btn btn-success btn-lg shadow">
-                <i class="bi bi-save-fill"></i> Save to Library
+        
+        <div class="d-flex justify-content-end gap-2">
+            <button onclick="window.print()" class="btn btn-outline-secondary btn-lg shadow">
+                <i class="bi bi-printer"></i> Print PDF
             </button>
-        </form>
+
+            <form action="{{ url_for('handle_save_story') }}" method="POST" ...>
+                <button type="submit" class="btn btn-success btn-lg shadow">
+                    <i class="bi bi-save-fill"></i> Save to Library
+                </button>
+            </form>
+        </div>
     </div>`;
 
                         } else {
@@ -458,6 +497,7 @@ function formatStoryHTML(text) {
     </script>
 
 {% endblock %}
+
 
 
 
