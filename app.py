@@ -803,9 +803,19 @@ def reset_password():
 
     return render_template('reset_password.html')
 
+@app.route('/reset-db-style')
+def reset_db_style():
+    with app.app_context():
+        # Xóa bảng Style cũ
+        Style.__table__.drop(db.engine)
+        # Tạo lại bảng Style mới (có cột user_id)
+        db.create_all()
+    return "Đã reset bảng Style thành công! Hãy xóa route này đi."
+
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
     app.run(debug=True, port=5000)
+
 
 
 
