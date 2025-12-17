@@ -803,18 +803,24 @@ def reset_password():
 
     return render_template('reset_password.html')
 
-@app.route('/reset-db-style')
-def reset_db_style():
-    with app.app_context():
-        # Xóa bảng Style cũ
+@app.route('/fix-style-db')
+def fix_style_db():
+    try:
+        # Lệnh này chỉ xóa bảng Style cũ đi
         Style.__table__.drop(db.engine)
-        # Tạo lại bảng Style mới (có cột user_id)
+        
+        # Lệnh này tạo lại bảng Style mới (theo code mới có user_id)
+        # Các bảng khác (User, Story...) đã có rồi nên sẽ không bị ảnh hưởng
         db.create_all()
-    return "Đã reset bảng Style thành công! Hãy xóa route này đi."
-
+        
+        return "Thành công! Đã reset bảng Style. Tài khoản User vẫn an toàn."
+    except Exception as e:
+        return f"Lỗi: {e}"
+        
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
     app.run(debug=True, port=5000)
+
 
 
 
