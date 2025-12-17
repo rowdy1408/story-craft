@@ -56,14 +56,15 @@
         /* --- BUTTONS --- */
         .floating-btn { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; font-size: 24px; z-index: 9999; display: flex; align-items: center; justify-content: center; }
         
-        /* CSS cho nút Back to Top */
-        #backToTopBtn {
+        /* CSS cho nút Back to Top - ĐÃ CẬP NHẬT */
+        #btn-back-to-top {
             display: none; position: fixed; bottom: 100px; right: 30px; z-index: 9998;
             border: none; outline: none; background-color: var(--sidebar-wood); color: white;
-            cursor: pointer; padding: 15px; border-radius: 50%; font-size: 18px;
+            cursor: pointer; padding: 0; border-radius: 50%; width: 50px; height: 50px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: background-color 0.3s, transform 0.3s;
+            align-items: center; justify-content: center;
         }
-        #backToTopBtn:hover { background-color: var(--accent-gold); transform: translateY(-3px); }
+        #btn-back-to-top:hover { background-color: var(--accent-gold); transform: translateY(-3px); }
 
         /* MOBILE */
         @media (max-width: 992px) {
@@ -78,47 +79,26 @@
             nav a:hover { transform: none; background-color: rgba(255,255,255,0.2); }
             .content-card { padding: 20px; }
             .floating-btn { width: 50px; height: 50px; font-size: 20px; bottom: 20px; right: 15px; }
-            #backToTopBtn { bottom: 80px; right: 15px; width: 50px; height: 50px; padding: 10px; }
+            #btn-back-to-top { bottom: 80px; right: 15px; }
             .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
             input, select, textarea { font-size: 16px !important; }
         }
 
         /* STYLE CHO WORD BANK */
-.word-bank-container {
-    background-color: #f8f9fa;
-    border: 2px dashed #d35400;
-    border-radius: 12px;
-    padding: 20px;
-    margin: 20px 0;
-    text-align: center;
-}
-
-.word-bank-title {
-    font-weight: bold;
-    color: #d35400;
-    text-transform: uppercase;
-    margin-bottom: 15px;
-    font-family: 'Quicksand', sans-serif;
-    letter-spacing: 1px;
-}
-
-.word-bank-grid {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 10px;
-}
-
-.word-chip {
-    background: #fff;
-    border: 1px solid #dee2e6;
-    padding: 8px 15px;
-    border-radius: 20px;
-    font-weight: bold;
-    color: #2c3e50;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    font-family: 'Courier New', monospace;
-}
+        .word-bank-container {
+            background-color: #f8f9fa; border: 2px dashed #d35400; border-radius: 12px;
+            padding: 20px; margin: 20px 0; text-align: center;
+        }
+        .word-bank-title {
+            font-weight: bold; color: #d35400; text-transform: uppercase;
+            margin-bottom: 15px; font-family: 'Quicksand', sans-serif; letter-spacing: 1px;
+        }
+        .word-bank-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+        .word-chip {
+            background: #fff; border: 1px solid #dee2e6; padding: 8px 15px;
+            border-radius: 20px; font-weight: bold; color: #2c3e50;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); font-family: 'Courier New', monospace;
+        }
     </style>
     {% block styles %}{% endblock %}
 </head>
@@ -176,51 +156,9 @@
     </div> 
 
     {% if current_user.is_authenticated %}
-        <button
-        type="button"
-        class="btn btn-primary btn-lg"
-        id="btn-back-to-top"
-        style="
-        position: fixed;
-        bottom: 90px; /* Đẩy lên cao hơn (mặc định thường là 20px) để né nút Support */
-        right: 20px;
-        display: none; /* Mặc định ẩn */
-        z-index: 9999; /* Luôn nổi trên cùng */
-        border-radius: 50%; /* Bo tròn */
-        width: 50px;
-        height: 50px;
-        padding: 0;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-    "
->
-    <i class="bi bi-arrow-up"></i>
-</button>
-    <script>
-    // Logic hiển thị nút khi cuộn chuột
-    let mybutton = document.getElementById("btn-back-to-top");
-
-    window.onscroll = function () {
-        scrollFunction();
-    };
-
-    function scrollFunction() {
-        if (
-            document.body.scrollTop > 200 ||
-            document.documentElement.scrollTop > 200
-        ) {
-            mybutton.style.display = "block";
-        } else {
-            mybutton.style.display = "none";
-        }
-    }
-
-    // Xử lý sự kiện click để cuộn lên đầu
-    mybutton.addEventListener("click", backToTop);
-
-    function backToTop() {
-        window.scrollTo({ top: 0, behavior: 'smooth' }); // Cuộn mượt mà
-    }
-</script>
+        <button type="button" id="btn-back-to-top" title="Back to top">
+            <i class="bi bi-arrow-up" style="font-size: 1.2rem;"></i>
+        </button>
 
         <button type="button" class="btn btn-warning rounded-circle shadow floating-btn" data-bs-toggle="modal" data-bs-target="#feedbackModal">
             <i class="bi bi-chat-dots-fill text-white"></i>
@@ -251,40 +189,40 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
+        // 1. LOGIC SIDEBAR MOBILE
         const navLinks = document.querySelectorAll('.navbar-collapse a');
-    const menuToggle = document.getElementById('sidebarMenu');
-    // Kiểm tra nếu menuToggle tồn tại mới chạy (tránh lỗi ở trang login)
-    if (menuToggle) {
-        const bsCollapse = new bootstrap.Collapse(menuToggle, {toggle: false});
-        navLinks.forEach((l) => {
-            l.addEventListener('click', () => {
-                if (menuToggle.classList.contains('show')) {
-                    bsCollapse.hide();
-                }
+        const menuToggle = document.getElementById('sidebarMenu');
+        if (menuToggle) {
+            const bsCollapse = new bootstrap.Collapse(menuToggle, {toggle: false});
+            navLinks.forEach((l) => {
+                l.addEventListener('click', () => {
+                    if (menuToggle.classList.contains('show')) {
+                        bsCollapse.hide();
+                    }
+                });
             });
-        });
-    }
-
-    const toastElList = document.querySelectorAll('.toast');
-    const toastList = [...toastElList].map(toastEl => new bootstrap.Toast(toastEl, { delay: 5000 }));
-    toastList.forEach(toast => toast.show());
-
-    // --- FIX LOGIC BACK TO TOP ---
-    let mybutton = document.getElementById("backToTopBtn");
-
-        window.onscroll = function() { scrollFunction() };
-
-        function scrollFunction() {
-            // Dùng window.scrollY cho chắc ăn
-            if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300 || window.scrollY > 300) {
-                if(mybutton) mybutton.style.display = "block";
-            } else {
-                if(mybutton) mybutton.style.display = "none";
-            }
         }
 
-        function topFunction() {
-            window.scrollTo({top: 0, behavior: 'smooth'});
+        // 2. LOGIC TOAST NOTIFICATION
+        const toastElList = document.querySelectorAll('.toast');
+        const toastList = [...toastElList].map(toastEl => new bootstrap.Toast(toastEl, { delay: 5000 }));
+        toastList.forEach(toast => toast.show());
+
+        // 3. LOGIC BACK TO TOP (Đã fix xung đột)
+        const mybutton = document.getElementById("btn-back-to-top");
+
+        if (mybutton) {
+            window.addEventListener("scroll", () => {
+                if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300 || window.scrollY > 300) {
+                    mybutton.style.display = "flex"; // Dùng flex để căn giữa icon
+                } else {
+                    mybutton.style.display = "none";
+                }
+            });
+
+            mybutton.addEventListener("click", () => {
+                window.scrollTo({ top: 0, behavior: "smooth" });
+            });
         }
     </script>
     
@@ -292,7 +230,3 @@
 
 </body>
 </html>
-
-
-
-
