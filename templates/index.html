@@ -290,11 +290,11 @@
                         const storyContent = resultData.story_result;
 
                         if (storyContent && storyContent.startsWith('ERROR:')) {
-                            resultHTML = `<div class="alert alert-danger shadow-sm"><h3><i class="bi bi-exclamation-triangle"></i> Error</h3><pre>${storyContent}</pre></div>`;
-                        } else if (storyContent) {
-                            /* Tìm đoạn resultHTML = ... trong templates/index.html và thay thế phần hiển thị nội dung: */
-
-resultHTML = `
+    resultHTML = `<div class="alert alert-danger shadow-sm"><h3><i class="bi bi-exclamation-triangle"></i> Error</h3><pre>${storyContent}</pre></div>`;
+} else if (storyContent) {
+    
+    // [CẬP NHẬT] Thêm onsubmit vào thẻ <form> bên dưới để disable nút khi ấn
+    resultHTML = `
     <div class="input-section border-top border-5 border-success position-relative fade-in">
         <span class="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-success fs-6 shadow">
             <i class="bi bi-check-circle-fill"></i> Story Generated
@@ -305,7 +305,9 @@ resultHTML = `
         </div>
 
         <hr class="my-4">
-        <form action="{{ url_for('handle_save_story') }}" method="POST" class="text-end">
+        <form action="{{ url_for('handle_save_story') }}" method="POST" class="text-end" 
+              onsubmit="var btn = this.querySelector('button'); btn.disabled = true; btn.innerHTML = '<span class=\'spinner-border spinner-border-sm\'></span> Saving...';">
+            
             <input type="hidden" name="story_content" value="${escapeHTML(storyContent)}">
             <input type="hidden" name="prompt_data_json" value='${inputsJson}'>
             
@@ -314,6 +316,7 @@ resultHTML = `
             </button>
         </form>
     </div>`;
+
                         } else {
                             resultHTML = `<div class="alert alert-warning">No content returned from AI.</div>`;
                         }
@@ -455,6 +458,7 @@ function formatStoryHTML(text) {
     </script>
 
 {% endblock %}
+
 
 
 
