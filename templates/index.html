@@ -348,11 +348,15 @@
                 <i class="bi bi-printer"></i> Print PDF
             </button>
 
-            <form action="{{ url_for('handle_save_story') }}" method="POST" ...>
-                <button type="submit" class="btn btn-success btn-lg shadow">
-                    <i class="bi bi-save-fill"></i> Save to Library
-                </button>
-            </form>
+            <form action="{{ url_for('handle_save_story') }}" method="POST">
+    <input type="hidden" name="story_content" value="${escapeHTML(storyContent)}">
+    
+    <input type="hidden" name="prompt_data_json" value='${inputsJson}'>
+    
+    <button type="submit" class="btn btn-success btn-lg shadow">
+        <i class="bi bi-save-fill"></i> Save to Library
+    </button>
+</form>
         </div>
     </div>`;
 
@@ -497,6 +501,7 @@ function formatStoryHTML(text) {
     </script>
 
 {% endblock %}
+
 
 
 
