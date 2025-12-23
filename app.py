@@ -678,8 +678,33 @@ def saved_stories_page(): return render_template('saved_stories.html', stories=S
 @login_required
 def handle_save_story():
     content = request.form.get('story_content', '')
-    title = content.strip().split('\n')[0].replace('#', '').strip() or "Untitled"
-    db.session.add(Story(title=title, content=content, user_id=current_user.id, prompt_data=request.form.get('prompt_data_json')))
+    
+    # --- LOGIC MỚI: Tự động trích xuất tiêu đề thông minh hơn ---
+    title = "Untitled Story"
+    if content:
+        # Tách các dòng
+        lines = content.strip().split('\n')
+        for line in lines:
+            clean_line = line.strip()
+            # Bỏ qua các dòng trống hoặc dòng tào lao của AI
+            if not clean_line or "Here is" in clean_line or "Sure," in clean_line:
+                continue
+            
+            # Nếu tìm thấy dòng có dấu # (Tiêu đề Markdown) hoặc dòng chữ bình thường đầu tiên
+            title = clean_line.replace('#', '').replace('*', '').strip()
+            break
+            
+        # Giới hạn độ dài tiêu đề để không bị lỗi database
+        if len(title) > 100:
+            title = title[:97] + "..."
+    # -----------------------------------------------------------
+
+    db.session.add(Story(
+        title=title, 
+        content=content, 
+        user_id=current_user.id, 
+        prompt_data=request.form.get('prompt_data_json')
+    ))
     db.session.commit()
     return redirect(url_for('saved_stories_page'))
 
@@ -819,6 +844,7 @@ def fix_style_db():
 if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') != 'true': webbrowser.open_new('http://127.0.0.1:5000/')
     app.run(debug=True, port=5000)
+
 
 
 
